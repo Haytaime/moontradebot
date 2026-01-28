@@ -1,0 +1,6 @@
+python-telegram-bot==21.10
+aiohttp==3.10.11
+solders==0.21.0
+solana==0.34.3
+base58==2.1.1
+```
