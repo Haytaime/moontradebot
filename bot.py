@@ -27,31 +27,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_name = user.first_name
     
-    # Vérifier si c'est la première fois que l'utilisateur utilise le bot
-    if not context.user_data.get('has_seen_welcome'):
-        # Message de bienvenue initial avec image
-        welcome_intro = """**What can this bot do?**
-
-23,641 monthly users
-
-🌕 **MoonTrade** is an AI-powered sniper bot designed to detect, analyze, and execute profitable memecoin trades on Solana.
-
-**Snipe faster. Trade smarter. Moon before the crowd.**
-🔹 Use /start to launch the bot"""
-        
-        await update.message.reply_photo(
-            photo="https://i.postimg.cc/gjr5vJJB/fait_enmoi_d_autre_similaire_a_sa_(1)_(2).jpg",
-            caption=welcome_intro,
-            parse_mode='Markdown'
-        )
-        
-        # Marquer que l'utilisateur a vu le message de bienvenue
-        context.user_data['has_seen_welcome'] = True
-        
-        # Ne pas afficher le menu automatiquement
-        return
-    
-    # Message de bienvenue personnalisé avec image (après /start)
+    # Message de bienvenue personnalisé avec image
     welcome_text = f"""🚀 Welcome {user_name}, MoonTrade v2.8.1
 
 ⚡ Automated Memecoin Trading on Solana
