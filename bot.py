@@ -1248,6 +1248,11 @@ def main():
     # Création de l'application
     application = Application.builder().token(BOT_TOKEN).build()
     
+    # Ajout des handlers (gestionnaires de commandes)
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("wallet", wallet_command))
+    application.add_handler(CommandHandler("help", help_command))
+    
     # Commandes correspondant aux boutons du menu
     application.add_handler(CommandHandler("quickbuy", quickbuy_command))
     application.add_handler(CommandHandler("bloom", bloom_command))
@@ -1271,5 +1276,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
