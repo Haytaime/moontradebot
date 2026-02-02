@@ -373,7 +373,7 @@ async def rugcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère les clics sur les boutons"""
     query = update.callback_query
     await query.answer()
@@ -1674,3 +1674,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
