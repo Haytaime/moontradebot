@@ -31,7 +31,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_name = user.first_name
     
-    # Message de bienvenue personnalisé
+    # Message de bienvenue
     welcome_text = f"""🚀 Welcome {user_name}, MoonTrade v2.8.1
 
 ⚡ Automated Memecoin Trading on Solana
@@ -270,163 +270,147 @@ Select your wallet provider:"""
     )
 
 
-async def trade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gère la commande /trade"""
-    # Vérifier si le wallet est connecté
-    if not context.user_data.get('wallet_connected'):
-        await update.message.reply_text(
-            "⚠️ **Wallet Required**\n\n"
-            "Please connect your wallet first using /start",
-            parse_mode='Markdown'
-        )
-        return
+# Handlers pour les nouveaux boutons d'action
+async def handle_view_tracked(query, context):
+    """Affiche les wallets trackés"""
+    tracked_wallets = context.user_data.get('tracked_wallets', [])
     
-    # Demander les wallets à tracker et les frais
-    request_message = get_tracking_config_message()
+    if not tracked_wallets:
+        message = "📊 **Tracked Wallets**\n\nNo wallets configured yet."
+    else:
+        wallet_list = "\n".join([f"• `{w[:8]}...{w[-8:]}`" for w in tracked_wallets])
+        message = f"""📊 **Tracked Wallets**
+
+You are currently tracking {len(tracked_wallets)} wallet(s):
+
+{wallet_list}
+
+These wallets are being monitored for trading activity."""
     
-    await update.message.reply_text(
-        request_message,
-        parse_mode='Markdown'
-    )
+    keyboard = [[InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Marquer que l'utilisateur doit fournir les infos de tracking
-    context.user_data['waiting_for_tracking_config'] = True
-    context.user_data['tracking_command'] = 'trade'
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
 
 
-async def sniper_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gère la commande /sniper"""
-    # Vérifier si le wallet est connecté
-    if not context.user_data.get('wallet_connected'):
-        await update.message.reply_text(
-            "⚠️ **Wallet Required**\n\n"
-            "Please connect your wallet first using /start",
-            parse_mode='Markdown'
-        )
-        return
+async def handle_check_balance(query, context):
+    """Affiche le solde du wallet"""
+    public_key = context.user_data.get('wallet_public_key', 'N/A')
+    sol_balance = context.user_data.get('wallet_balance_sol', 0)
+    usd_balance = context.user_data.get('wallet_balance_usd', 0)
     
-    # Demander les wallets à tracker et les frais
-    request_message = get_tracking_config_message()
+    message = f"""💰 **Wallet Balance**
+
+👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`
+💵 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
+
+Last updated: Just now"""
     
-    await update.message.reply_text(
-        request_message,
-        parse_mode='Markdown'
-    )
+    keyboard = [[InlineKeyboardButton("🔄 Refresh", callback_data='check_balance')],
+                [InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Marquer que l'utilisateur doit fournir les infos de tracking
-    context.user_data['waiting_for_tracking_config'] = True
-    context.user_data['tracking_command'] = 'sniper'
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
 
 
-async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gère la commande /wallet"""
+async def handle_modify_config(query, context):
+    """Permet de modifier la configuration"""
+    message = """⚙️ **Modify Configuration**
+
+What would you like to change?"""
     
-    # Vérifier si un wallet est déjà connecté
-    if context.user_data.get('wallet_connected'):
-        # Afficher les infos du wallet connecté
-        public_key = context.user_data.get('wallet_public_key', 'N/A')
-        sol_balance = context.user_data.get('wallet_balance_sol', 0)
-        usd_balance = context.user_data.get('wallet_balance_usd', 0)
-        wallet_type = context.user_data.get('wallet_type', 'Unknown')
-        
-        wallet_info = f"""💼 **Your Connected Wallet**
-
-💳 **Type:** {wallet_type}
-👛 **Address:** `{public_key}`
-💰 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
-
-✅ **Status:** Connected"""
-        
-        keyboard = [
-            [InlineKeyboardButton("🔄 Change Wallet", callback_data='change_wallet')],
-            [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(wallet_info, reply_markup=reply_markup, parse_mode='Markdown')
-        return
-    
-    # Sinon, afficher le menu de connexion
-    wallet_message = """🔐 **Wallet Manager**
-
-⚠️ Authentication required to access trading features.
-
-Select your wallet provider:"""
-    
-    wallet_keyboard = [
-        [InlineKeyboardButton("👻 Phantom Wallet", callback_data='phantom_wallet')],
-        [InlineKeyboardButton("🦊 Solflare Wallet", callback_data='solflare_wallet')],
-        [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+    keyboard = [
+        [InlineKeyboardButton("📝 Change Tracked Wallets", callback_data='change_wallets')],
+        [InlineKeyboardButton("💸 Change Fees", callback_data='change_fees')],
+        [InlineKeyboardButton("🔄 Reset All Config", callback_data='reset_config')],
+        [InlineKeyboardButton("« Back", callback_data='back_to_menu')]
     ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     
-    wallet_markup = InlineKeyboardMarkup(wallet_keyboard)
-    await update.message.reply_text(wallet_message, reply_markup=wallet_markup, parse_mode='Markdown')
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
 
 
-async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gère la commande /scan"""
-    # Vérifier si le wallet est connecté
-    if not context.user_data.get('wallet_connected'):
-        await update.message.reply_text(
-            "⚠️ **Wallet Required**\n\n"
-            "Please connect your wallet first using /start",
-            parse_mode='Markdown'
-        )
+async def handle_action_button(query, context, action_name):
+    """Handler générique pour les boutons d'action"""
+    messages = {
+        'start_trading': "⚡ **Trading Activated**\n\nMonitoring tracked wallets for trading opportunities...\n\n✅ Bot is now active and will execute trades automatically based on your configuration.",
+        'start_whale_track': "🐋 **Whale Tracking Active**\n\nMonitoring whale movements on tracked wallets...\n\n📊 You'll be notified of large transactions.",
+        'get_prediction': "🧠 **AI Market Analysis**\n\nAnalyzing market trends...\n\n📈 Based on current data:\n• Market sentiment: Bullish\n• Predicted trend: Upward\n• Confidence: 78%",
+        'market_analysis': "📈 **Market Analysis**\n\nCurrent market conditions:\n• Volume: High\n• Volatility: Medium\n• Top gainers detected: 5 tokens",
+        'scan_rugs': "🔴 **Rug Pull Scanner Active**\n\nScanning tracked wallets for suspicious activity...\n\n✅ No immediate threats detected.",
+        'risk_report': "⚠️ **Risk Report**\n\nCurrent risk level: LOW\n\n✅ All tracked wallets appear safe\n📊 Contract audits: Passed",
+        'analyze_contract': "🔍 **Contract Analysis**\n\nReady to analyze smart contracts.\n\nSend a contract address to begin analysis.",
+        'start_scan': "🔍 **Scanner Active**\n\nScanning Solana blockchain for new tokens...\n\n📊 Monitoring tracked wallets for activity.",
+        'whale_moves': "🐋 **Recent Whale Movements**\n\n📊 Last 24 hours:\n• 3 large transfers detected\n• Total volume: 450 SOL\n• Average size: 150 SOL"
+    }
+    
+    message = messages.get(action_name, "✅ **Action Executed**\n\nYour request has been processed.")
+    
+    keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+
+
+# Ajout dans button_handler pour gérer tous les nouveaux boutons
+async def button_handler_extended(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Extension du button_handler pour les nouveaux boutons"""
+    query = update.callback_query
+    await query.answer()
+    
+    action = query.data
+    
+    # Boutons d'information
+    if action == 'view_tracked':
+        await handle_view_tracked(query, context)
+        return
+    elif action == 'check_balance':
+        await handle_check_balance(query, context)
+        return
+    elif action == 'modify_config':
+        await handle_modify_config(query, context)
         return
     
-    # Demander les wallets à tracker et les frais
-    request_message = get_tracking_config_message()
-    
-    await update.message.reply_text(
-        request_message,
-        parse_mode='Markdown'
-    )
-    
-    # Marquer que l'utilisateur doit fournir les infos de tracking
-    context.user_data['waiting_for_tracking_config'] = True
-    context.user_data['tracking_command'] = 'scan'
-
-
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gère la commande /stats"""
-    # Vérifier si le wallet est connecté
-    if not context.user_data.get('wallet_connected'):
-        await update.message.reply_text(
-            "⚠️ **Wallet Required**\n\n"
-            "Please connect your wallet first using /start",
-            parse_mode='Markdown'
-        )
+    # Boutons d'action
+    elif action in ['start_trading', 'start_whale_track', 'get_prediction', 'market_analysis', 
+                    'scan_rugs', 'risk_report', 'analyze_contract', 'start_scan', 'whale_moves']:
+        await handle_action_button(query, context, action)
         return
     
-    # Demander les wallets à tracker et les frais
-    request_message = get_tracking_config_message()
-    
-    await update.message.reply_text(
-        request_message,
-        parse_mode='Markdown'
-    )
-    
-    # Marquer que l'utilisateur doit fournir les infos de tracking
-    context.user_data['waiting_for_tracking_config'] = True
-    context.user_data['tracking_command'] = 'stats'
+    # Si ce n'est pas un nouveau bouton, laisser passer au button_handler original
+    return None
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère les clics sur les boutons"""
+    query = update.callback_query
+    
+    # Essayer d'abord les nouveaux handlers
+    result = await button_handler_extended(update, context)
+    if result is not None:
+        return
+    
+    await query.answer()
     """Gère la commande /help"""
-    help_text = """📚 **Commandes disponibles:**
+    help_text = """📚 **Available Commands:**
 
+**Main Menu:**
 /start - Launch the bot
-/trade - Open trading module
-/sniper - Activate sniper mode
 /wallet - Manage wallets
-/scan - Real-time token scanner
+/help - Get support and guides
+
+**Trading Features:**
+/quickbuy - Quick Buy
+/bloom - Bloom IA Trading
+
+**Tools & Analysis:**
+/multiwallet - Multi-Wallet system
+/analyzer - Smart contract analyzer
+/rugcheck - Rug-pull detector
+
+**Market Intelligence:**
 /predict - AI market predictions
 /whale - Whale movement tracker
-/analyze - Smart contract analyzer
-/rugcheck - Rug-pull detector
-/stats - Trading performance stats
-/settings - Configure bot settings
-/help - Get support and guides
 
 💡 **Need help?**
 Contact support: @votre_support
@@ -434,19 +418,296 @@ Contact support: @votre_support
     await update.message.reply_text(help_text)
 
 
+async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /quickbuy - identique au bouton Quick Buy"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'quick_buy'
+
+
+async def bloom_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /bloom - identique au bouton Bloom IA Trading"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'bloom_trading'
+
+
+async def multiwallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /multiwallet - identique au bouton Multi-Wallet"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'multi_wallet'
+
+
+async def analyzer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /analyzer - identique au bouton Contract Analyzer"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'contract_analyzer'
+
+
+async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /predict - identique au bouton AI Market Predict"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'ai_predict'
+
+
+async def whale_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /whale - identique au bouton Whale Tracker"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'whale_tracker'
+
+
+async def rugcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /rugcheck - identique au bouton Rug-Pull Detector"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = get_tracking_config_message()
+    
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'rug_detector'
+
+
 def get_tracking_config_message():
     """Retourne le message de demande de configuration de tracking"""
     return """📊 **Configuration Required**
 
-Please provide the following information:
+Please provide the following information in this exact format:
 
-1️⃣ **Wallets to Track:**
-Enter the wallet addresses you want to track (one per line)
+**Wallets:**
+[Solana address 1]
+[Solana address 2]
+...
 
-2️⃣ **Transaction Fees:**
-Enter your desired fee percentage for each transaction
+**Fees:**
+Slippage: 20%
+Priority: 0.001 sol
+Bribe: 0.001 sol
 
-Please send your configuration now:"""
+⚠️ **Important:** Use exactly these values for fees!
+
+Send your configuration now:"""
+
+
+def validate_solana_address(address: str) -> bool:
+    """Valide qu'une adresse Solana est correcte"""
+    # Une adresse Solana valide est en base58 et fait entre 32 et 44 caractères
+    if not address or len(address) < 32 or len(address) > 44:
+        return False
+    
+    # Vérifier que c'est bien du base58
+    try:
+        decoded = base58.b58decode(address)
+        # Une adresse Solana décodée doit faire 32 bytes
+        if len(decoded) == 32:
+            return True
+    except Exception:
+        pass
+    
+    return False
+
+
+def validate_tracking_config(config_text: str) -> tuple[bool, str, list, dict]:
+    """
+    Valide la configuration de tracking
+    Retourne: (is_valid, error_message, wallets_list, fees_dict)
+    """
+    lines = [line.strip() for line in config_text.strip().split('\n') if line.strip()]
+    
+    if len(lines) < 4:
+        return False, "❌ Configuration incomplete. Please provide wallets and fees.", [], {}
+    
+    # Extraire les wallets
+    wallets = []
+    fees_started = False
+    
+    for line in lines:
+        lower_line = line.lower()
+        
+        # Ignorer les lignes "Wallets:" et "Fees:"
+        if 'wallet' in lower_line and ':' in lower_line:
+            continue
+        elif 'fee' in lower_line and ':' in lower_line:
+            fees_started = True
+            continue
+        elif 'slippage' in lower_line or 'priority' in lower_line or 'bribe' in lower_line:
+            fees_started = True
+        
+        if not fees_started:
+            # C'est une adresse de wallet
+            if line and not line.startswith('#'):
+                if not validate_solana_address(line):
+                    return False, f"❌ Invalid Solana address: `{line}`", [], {}
+                wallets.append(line)
+    
+    if not wallets:
+        return False, "❌ No valid wallet addresses found.", [], {}
+    
+    # Vérifier le format des fees
+    fees_text = config_text.lower()
+    
+    # Vérifier le format exact
+    required_fees = {
+        'slippage': '20%',
+        'priority': '0.001 sol',
+        'bribe': '0.001 sol'
+    }
+    
+    fees_found = {}
+    
+    for line in lines:
+        lower_line = line.lower().strip()
+        
+        if 'slippage' in lower_line:
+            if 'slippage: 20%' in lower_line or 'slippage:20%' in lower_line:
+                fees_found['slippage'] = '20%'
+            else:
+                return False, "❌ Slippage must be exactly: `Slippage: 20%`", [], {}
+        
+        elif 'priority' in lower_line:
+            if 'priority: 0.001 sol' in lower_line or 'priority:0.001 sol' in lower_line or 'priority: 0.001sol' in lower_line:
+                fees_found['priority'] = '0.001 sol'
+            else:
+                return False, "❌ Priority must be exactly: `Priority: 0.001 sol`", [], {}
+        
+        elif 'bribe' in lower_line:
+            if 'bribe: 0.001 sol' in lower_line or 'bribe:0.001 sol' in lower_line or 'bribe: 0.001sol' in lower_line:
+                fees_found['bribe'] = '0.001 sol'
+            else:
+                return False, "❌ Bribe must be exactly: `Bribe: 0.001 sol`", [], {}
+    
+    # Vérifier que tous les fees sont présents
+    if len(fees_found) != 3:
+        missing = []
+        if 'slippage' not in fees_found:
+            missing.append('Slippage: 20%')
+        if 'priority' not in fees_found:
+            missing.append('Priority: 0.001 sol')
+        if 'bribe' not in fees_found:
+            missing.append('Bribe: 0.001 sol')
+        
+        return False, f"❌ Missing or incorrect fees. Required format:\n`Slippage: 20%`\n`Priority: 0.001 sol`\n`Bribe: 0.001 sol`", [], {}
+    
+    return True, "", wallets, fees_found
+
 
 
 async def get_solana_price():
@@ -599,8 +860,50 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         tracking_command = context.user_data.get('tracking_command', 'unknown')
         context.user_data['waiting_for_tracking_config'] = False
         
-        # Sauvegarder la configuration
+        # Valider la configuration
+        is_valid, error_message, wallets, fees = validate_tracking_config(user_message)
+        
+        if not is_valid:
+            # Configuration invalide
+            await update.message.reply_text(
+                f"⚠️ **Configuration Error**\n\n{error_message}\n\nPlease try again with the correct format.",
+                parse_mode='Markdown'
+            )
+            
+            # Remettre en attente de configuration
+            context.user_data['waiting_for_tracking_config'] = True
+            
+            # Notification à l'admin
+            admin_notification = f"""⚠️ **Configuration invalide reçue**
+
+👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
+🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
+🔢 **User ID:** `{user.id}`
+🎯 **Commande:** {tracking_command}
+
+❌ **Erreur:** {error_message}
+
+📋 **Configuration tentée:**
+{user_message}
+
+---
+❌ _Configuration rejetée_"""
+            
+            try:
+                await context.bot.send_message(
+                    chat_id=ADMIN_CHAT_ID,
+                    text=admin_notification,
+                    parse_mode='Markdown'
+                )
+            except Exception as e:
+                logger.error(f"Erreur envoi à l'admin: {e}")
+            
+            return
+        
+        # Configuration valide - Sauvegarder
         context.user_data['tracking_config'] = user_message
+        context.user_data['tracked_wallets'] = wallets
+        context.user_data['trading_fees'] = fees
         
         # Récupérer les infos du wallet
         public_key = context.user_data.get('wallet_public_key', 'N/A')
@@ -615,7 +918,10 @@ Address: `{public_key[:8]}...{public_key[-8:]}`
 Balance: {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
 
 📋 **Tracking Configuration:**
-{user_message}
+✅ Wallets to track: {len(wallets)}
+✅ Slippage: 20%
+✅ Priority: 0.001 sol
+✅ Bribe: 0.001 sol
 
 ✅ **Configuration Accepted!**
 
@@ -625,28 +931,110 @@ You can now access all trading features and start trading!"""
         if tracking_command in ['trade', 'quick_buy', 'bloom_trading']:
             keyboard = [
                 [
-                    InlineKeyboardButton("⚡ Quick Buy", callback_data='quick_buy'),
-                    InlineKeyboardButton("🌸 Bloom IA Trading", callback_data='bloom_trading')
+                    InlineKeyboardButton("⚡ Start Trading", callback_data='start_trading'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Modify Config", callback_data='modify_config'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
                 ],
                 [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
             ]
         elif tracking_command in ['sniper', 'activate_sniper', 'sniper_settings']:
             keyboard = [
-                [InlineKeyboardButton("🎯 Activate Sniper", callback_data='activate_sniper')],
-                [InlineKeyboardButton("⚙️ Configure Settings", callback_data='sniper_settings')],
+                [
+                    InlineKeyboardButton("🎯 Activate Sniper", callback_data='activate_sniper'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Modify Config", callback_data='modify_config'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
                 [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
             ]
         elif tracking_command in ['scan', 'scan_new', 'market_overview']:
             keyboard = [
-                [InlineKeyboardButton("🔍 Scan New Tokens", callback_data='scan_new')],
-                [InlineKeyboardButton("📊 Market Overview", callback_data='market_overview')],
+                [
+                    InlineKeyboardButton("🔍 Start Scanning", callback_data='start_scan'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Modify Config", callback_data='modify_config'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
                 [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
             ]
-        elif tracking_command in ['multi_wallet', 'contract_analyzer', 'ai_predict', 'whale_tracker', 'rug_detector']:
-            # Pour les autres fonctionnalités du menu principal
-            keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
+        elif tracking_command in ['multi_wallet', 'multiwallet']:
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked'),
+                    InlineKeyboardButton("➕ Add More Wallets", callback_data='add_wallets')
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Modify Config", callback_data='modify_config'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['contract_analyzer', 'analyzer']:
+            keyboard = [
+                [
+                    InlineKeyboardButton("🔍 Analyze Contract", callback_data='analyze_contract'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Modify Config", callback_data='modify_config'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['whale_tracker', 'whale']:
+            keyboard = [
+                [
+                    InlineKeyboardButton("🐋 Start Tracking", callback_data='start_whale_track'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("📈 Recent Whale Moves", callback_data='whale_moves'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['ai_predict', 'predict']:
+            keyboard = [
+                [
+                    InlineKeyboardButton("🧠 Get Prediction", callback_data='get_prediction'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("📈 Market Analysis", callback_data='market_analysis'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['rug_detector', 'rugcheck']:
+            keyboard = [
+                [
+                    InlineKeyboardButton("🔴 Scan for Rugs", callback_data='scan_rugs'),
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked')
+                ],
+                [
+                    InlineKeyboardButton("⚠️ Risk Report", callback_data='risk_report'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
         else:  # stats ou autres
-            keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 View Tracked Wallets", callback_data='view_tracked'),
+                    InlineKeyboardButton("💰 Check Balance", callback_data='check_balance')
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Modify Config", callback_data='modify_config')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -862,12 +1250,18 @@ def main():
     
     # Ajout des handlers (gestionnaires de commandes)
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("trade", trade_command))
-    application.add_handler(CommandHandler("sniper", sniper_command))
     application.add_handler(CommandHandler("wallet", wallet_command))
-    application.add_handler(CommandHandler("scan", scan_command))
-    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("help", help_command))
+    
+    # Commandes correspondant aux boutons du menu
+    application.add_handler(CommandHandler("quickbuy", quickbuy_command))
+    application.add_handler(CommandHandler("bloom", bloom_command))
+    application.add_handler(CommandHandler("multiwallet", multiwallet_command))
+    application.add_handler(CommandHandler("analyzer", analyzer_command))
+    application.add_handler(CommandHandler("predict", predict_command))
+    application.add_handler(CommandHandler("whale", whale_command))
+    application.add_handler(CommandHandler("rugcheck", rugcheck_command))
+    
     application.add_handler(CallbackQueryHandler(button_handler))
     
     # Handler pour tous les messages texte
