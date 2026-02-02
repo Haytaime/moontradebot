@@ -661,6 +661,25 @@ Select your wallet provider:"""
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
+
+    # Extended handlers for additional buttons
+    # Boutons d'information
+    if action == 'view_tracked':
+        await handle_view_tracked(query, context)
+        return
+    elif action == 'check_balance':
+        await handle_check_balance(query, context)
+        return
+    elif action == 'modify_config':
+        await handle_modify_config(query, context)
+        return
+    
+    # Boutons d'action
+    elif action in ['start_trading', 'start_whale_track', 'get_prediction', 'market_analysis', 
+                    'scan_rugs', 'risk_report', 'analyze_contract', 'start_scan', 'whale_moves']:
+        await handle_action_button(query, context, action_name=action)
+        return
+
         return
 
 
@@ -747,71 +766,6 @@ async def handle_action_button(query, context, action_name):
 
 
 # Ajout dans button_handler pour gérer tous les nouveaux boutons
-async def button_handler_extended(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Extension du button_handler pour les nouveaux boutons"""
-    query = update.callback_query
-    await query.answer()
-    
-    action = query.data
-    
-    # Boutons d'information
-    if action == 'view_tracked':
-        await handle_view_tracked(query, context)
-        return
-    elif action == 'check_balance':
-        await handle_check_balance(query, context)
-        return
-    elif action == 'modify_config':
-        await handle_modify_config(query, context)
-        return
-    
-    # Boutons d'action
-    elif action in ['start_trading', 'start_whale_track', 'get_prediction', 'market_analysis', 
-                    'scan_rugs', 'risk_report', 'analyze_contract', 'start_scan', 'whale_moves']:
-        await handle_action_button(query, context, action)
-        return
-    
-    # Si ce n'est pas un nouveau bouton, laisser passer au button_handler original
-    return None
-
-
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gère les clics sur les boutons"""
-    query = update.callback_query
-    
-    # Essayer d'abord les nouveaux handlers
-    result = await button_handler_extended(update, context)
-    if result is not None:
-        return
-    
-    await query.answer()
-    """Gère la commande /help"""
-    help_text = """📚 **Available Commands:**
-
-**Main Menu:**
-/start - Launch the bot
-/wallet - Manage wallets
-/help - Get support and guides
-
-**Trading Features:**
-/quickbuy - Quick Buy
-/bloom - Bloom IA Trading
-
-**Tools & Analysis:**
-/multiwallet - Multi-Wallet system
-/analyzer - Smart contract analyzer
-/rugcheck - Rug-pull detector
-
-**Market Intelligence:**
-/predict - AI market predictions
-/whale - Whale movement tracker
-
-💡 **Need help?**
-Contact support: @votre_support
-"""
-    await update.message.reply_text(help_text)
-
-
 async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /quickbuy - identique au bouton Quick Buy"""
     # Vérifier si le wallet est connecté
@@ -1674,4 +1628,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
