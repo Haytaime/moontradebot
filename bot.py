@@ -1250,7 +1250,7 @@ def main():
     
     # Ajout des handlers (gestionnaires de commandes)
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("wallet", wallet_command))
+    application.add_handler(CommandHandler("wallet", whale_command))
     application.add_handler(CommandHandler("help", help_command))
     
     # Commandes correspondant aux boutons du menu
@@ -1276,3 +1276,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
