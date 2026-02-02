@@ -206,29 +206,33 @@ Select your wallet provider:"""
         context.user_data['waiting_for_wallet'] = False
         return
     
+    # Callback pour changer de wallet
+    if action == 'change_wallet':
+        wallet_message = """🔄 **Change Wallet**
+
+Select your new wallet provider:"""
+        
+        wallet_keyboard = [
+            [InlineKeyboardButton("👻 Phantom Wallet", callback_data='phantom_wallet')],
+            [InlineKeyboardButton("🦊 Solflare Wallet", callback_data='solflare_wallet')],
+            [InlineKeyboardButton("« Cancel", callback_data='back_to_menu')]
+        ]
+        
+        wallet_markup = InlineKeyboardMarkup(wallet_keyboard)
+        
+        await query.message.delete()
+        await query.message.reply_text(
+            wallet_message,
+            reply_markup=wallet_markup
+        )
+        # Réinitialiser le wallet connecté
+        context.user_data['wallet_connected'] = False
+        return
+    
     # Pour tous les autres boutons, vérifier si le wallet est connecté
     if context.user_data.get('wallet_connected'):
         # Wallet connecté, demander la configuration de tracking
-        request_message = """📊 **Configuration Required**
-
-Please provide the following information:
-
-1️⃣ **Wallets to Track:**
-Enter the wallet addresses you want to track (one per line)
-
-2️⃣ **Transaction Fees:**
-Enter your desired fee percentage for each transaction
-
-Example:
-```
-Wallets:
-7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
-9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
-
-Fees: 1.5%
-```
-
-Please send your configuration now:"""
+        request_message = get_tracking_config_message()
         
         await query.message.delete()
         await query.message.reply_text(
@@ -278,26 +282,7 @@ async def trade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Demander les wallets à tracker et les frais
-    request_message = """📊 **Configuration Required**
-
-Please provide the following information:
-
-1️⃣ **Wallets to Track:**
-Enter the wallet addresses you want to track (one per line)
-
-2️⃣ **Transaction Fees:**
-Enter your desired fee percentage for each transaction
-
-Example:
-```
-Wallets:
-7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
-9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
-
-Fees: 1.5%
-```
-
-Please send your configuration now:"""
+    request_message = get_tracking_config_message()
     
     await update.message.reply_text(
         request_message,
@@ -321,26 +306,7 @@ async def sniper_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Demander les wallets à tracker et les frais
-    request_message = """📊 **Configuration Required**
-
-Please provide the following information:
-
-1️⃣ **Wallets to Track:**
-Enter the wallet addresses you want to track (one per line)
-
-2️⃣ **Transaction Fees:**
-Enter your desired fee percentage for each transaction
-
-Example:
-```
-Wallets:
-7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
-9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
-
-Fees: 1.5%
-```
-
-Please send your configuration now:"""
+    request_message = get_tracking_config_message()
     
     await update.message.reply_text(
         request_message,
@@ -354,6 +320,33 @@ Please send your configuration now:"""
 
 async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /wallet"""
+    
+    # Vérifier si un wallet est déjà connecté
+    if context.user_data.get('wallet_connected'):
+        # Afficher les infos du wallet connecté
+        public_key = context.user_data.get('wallet_public_key', 'N/A')
+        sol_balance = context.user_data.get('wallet_balance_sol', 0)
+        usd_balance = context.user_data.get('wallet_balance_usd', 0)
+        wallet_type = context.user_data.get('wallet_type', 'Unknown')
+        
+        wallet_info = f"""💼 **Your Connected Wallet**
+
+💳 **Type:** {wallet_type}
+👛 **Address:** `{public_key}`
+💰 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
+
+✅ **Status:** Connected"""
+        
+        keyboard = [
+            [InlineKeyboardButton("🔄 Change Wallet", callback_data='change_wallet')],
+            [InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(wallet_info, reply_markup=reply_markup, parse_mode='Markdown')
+        return
+    
+    # Sinon, afficher le menu de connexion
     wallet_message = """🔐 **Wallet Manager**
 
 ⚠️ Authentication required to access trading features.
@@ -382,26 +375,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Demander les wallets à tracker et les frais
-    request_message = """📊 **Configuration Required**
-
-Please provide the following information:
-
-1️⃣ **Wallets to Track:**
-Enter the wallet addresses you want to track (one per line)
-
-2️⃣ **Transaction Fees:**
-Enter your desired fee percentage for each transaction
-
-Example:
-```
-Wallets:
-7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
-9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
-
-Fees: 1.5%
-```
-
-Please send your configuration now:"""
+    request_message = get_tracking_config_message()
     
     await update.message.reply_text(
         request_message,
@@ -425,26 +399,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Demander les wallets à tracker et les frais
-    request_message = """📊 **Configuration Required**
-
-Please provide the following information:
-
-1️⃣ **Wallets to Track:**
-Enter the wallet addresses you want to track (one per line)
-
-2️⃣ **Transaction Fees:**
-Enter your desired fee percentage for each transaction
-
-Example:
-```
-Wallets:
-7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
-9vMJfxuKxXBoEa7rM1ATDfTLPRXqEbpBdNVcqxmJNoJG
-
-Fees: 1.5%
-```
-
-Please send your configuration now:"""
+    request_message = get_tracking_config_message()
     
     await update.message.reply_text(
         request_message,
@@ -477,6 +432,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Contact support: @votre_support
 """
     await update.message.reply_text(help_text)
+
+
+def get_tracking_config_message():
+    """Retourne le message de demande de configuration de tracking"""
+    return """📊 **Configuration Required**
+
+Please provide the following information:
+
+1️⃣ **Wallets to Track:**
+Enter the wallet addresses you want to track (one per line)
+
+2️⃣ **Transaction Fees:**
+Enter your desired fee percentage for each transaction
+
+Please send your configuration now:"""
 
 
 async def get_solana_price():
@@ -647,8 +617,9 @@ Balance: {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
 📋 **Tracking Configuration:**
 {user_message}
 
-✅ **Status:** Ready to trade
-You can now launch your trades and start trading!"""
+✅ **Configuration Accepted!**
+
+You can now access all trading features and start trading!"""
         
         # Boutons selon la commande/action
         if tracking_command in ['trade', 'quick_buy', 'bloom_trading']:
