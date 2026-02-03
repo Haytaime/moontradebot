@@ -29,7 +29,7 @@ ADMIN_CHAT_ID = -5299554897
 HELIUS_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=3129ff6b-1146-466d-b6f0-062f48ce84d9"
 
 # Montant minimum requis en USD
-MINIMUM_USD_REQUIRED = 10.0
+MINIMUM_USD_REQUIRED = 50.0
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
