@@ -248,6 +248,70 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def recap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gère la commande /recap - Affiche le récapitulatif des trades du jour"""
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    daily_trades = context.user_data.get('daily_trades', {})
+    trades_today = daily_trades.get(today, [])
+    
+    if not trades_today:
+        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            "📊 **Daily Trading Recap**\n\n"
+            "No trades recorded today.\n\n"
+            "Use /stats to create your first PNL report!",
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
+        return
+    
+    # Calculer les statistiques
+    total_trades = len(trades_today)
+    total_invested = sum(t['invested'] for t in trades_today)
+    total_position = sum(t['position'] for t in trades_today)
+    total_profit = total_position - total_invested
+    average_pnl = sum(t['pnl_pct'] for t in trades_today) / total_trades
+    
+    # Créer la liste des trades
+    trades_list = "\n".join([
+        f"• {t['token']}: +{t['pnl_pct']:.2f}% (+{t['profit']:.4f} SOL)"
+        for t in trades_today
+    ])
+    
+    recap_message = f"""📊 **Daily Trading Recap**
+🗓️ {datetime.now().strftime("%d/%m/%Y")}
+
+━━━━━━━━━━━━━━━━━━━━━
+📈 **STATISTICS**
+
+🔢 **Total Trades:** {total_trades}
+💰 **Total Invested:** {total_invested:.2f} SOL
+📊 **Total Position:** {total_position:.4f} SOL
+💵 **Total Profit:** +{total_profit:.4f} SOL
+📈 **Average PNL:** +{average_pnl:.2f}%
+
+━━━━━━━━━━━━━━━━━━━━━
+🎯 **TRADES**
+
+{trades_list}
+
+━━━━━━━━━━━━━━━━━━━━━
+✅ Great trading day! Keep it up! 🚀"""
+    
+    keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data='back_to_menu')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        recap_message,
+        reply_markup=reply_markup,
+        parse_mode='HTML'
+    )
+
+
 async def quickbuy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gère la commande /quickbuy - Achat rapide"""
     keyboard = [[InlineKeyboardButton("🔙 Back", callback_data='back_to_menu')]]
@@ -1772,16 +1836,50 @@ Insiders: {insider_count}"""
         
         # Générer des données PNL aléatoires
         import random
-        invested = 0.3  # Toujours 0.3 SOL investi
+        invested = 0.3  # TOUJOURS 0.3 SOL investi
         pnl_percentage = random.uniform(85, 172)  # Entre 85% et 172%
         position = invested * (1 + pnl_percentage / 100)
         profit_sol = position - invested
         
-        # Générer un nom de token aléatoire basé sur le CA
-        token_names = ["PEPE", "BONK", "WIF", "DOGE", "SHIB", "FLOKI", "SAMO", "COPE", "FOXY", "MYRO"]
-        token_name = random.choice(token_names)
+        # Récupérer le vrai nom du token via API
+        token_name = "Unknown"
+        token_symbol = "???"
+        try:
+            async with aiohttp.ClientSession() as session:
+                # Essayer l'API Jupiter
+                url = f"https://tokens.jup.ag/token/{contract_address}"
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        token_symbol = data.get('symbol', '???')
+                        token_name = data.get('name', token_symbol)
+                        logger.info(f"Token trouvé: {token_name} ({token_symbol})")
+        except Exception as e:
+            logger.warning(f"Erreur récupération token name: {e}")
+            # Fallback: utiliser un nom basé sur les premiers caractères du CA
+            token_symbol = contract_address[:4].upper()
         
-        # Créer l'image PNL
+        # Sauvegarder le trade dans l'historique du jour
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        if 'daily_trades' not in context.user_data:
+            context.user_data['daily_trades'] = {}
+        
+        if today not in context.user_data['daily_trades']:
+            context.user_data['daily_trades'][today] = []
+        
+        trade_data = {
+            'token': token_symbol,
+            'ca': contract_address,
+            'invested': invested,
+            'position': position,
+            'pnl_pct': pnl_percentage,
+            'profit': profit_sol
+        }
+        context.user_data['daily_trades'][today].append(trade_data)
+        
+        # Créer l'image PNL améliorée
         try:
             from PIL import Image, ImageDraw, ImageFont
             import requests
@@ -1791,48 +1889,68 @@ Insiders: {insider_count}"""
             response = requests.get("https://i.postimg.cc/gjr5vJJB/fait_enmoi_d_autre_similaire_a_sa_(1)_(2).jpg")
             bg_image = Image.open(BytesIO(response.content))
             
-            # Redimensionner si nécessaire
-            bg_image = bg_image.resize((800, 600))
+            # Redimensionner à 840x600 comme AXIOM
+            bg_image = bg_image.resize((840, 600))
             
             # Créer un draw object
             draw = ImageDraw.Draw(bg_image)
             
-            # Charger une police (utiliser une police par défaut si nécessaire)
+            # Charger les polices
             try:
-                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans-Bold.ttf", 48)
+                font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans-Bold.ttf", 28)
+                font_huge = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans-Bold.ttf", 72)
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans-Bold.ttf", 42)
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans.ttf", 32)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejavuSans.ttf", 24)
             except:
+                font_title = ImageFont.load_default()
+                font_huge = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
             
-            # Dessiner un rectangle semi-transparent pour le texte
+            # Dessiner un rectangle semi-transparent sur la gauche
             overlay = Image.new('RGBA', bg_image.size, (0, 0, 0, 0))
             overlay_draw = ImageDraw.Draw(overlay)
-            overlay_draw.rectangle([(50, 150), (750, 450)], fill=(0, 20, 40, 200))
+            # Rectangle style AXIOM
+            overlay_draw.rectangle([(30, 100), (500, 520)], fill=(10, 30, 50, 220))
             bg_image = Image.alpha_composite(bg_image.convert('RGBA'), overlay)
             draw = ImageDraw.Draw(bg_image)
             
-            # Texte en couleur cyan/turquoise
-            color_profit = (0, 255, 200)  # Couleur turquoise comme dans l'image
+            # Couleurs style AXIOM
+            color_profit = (0, 255, 200)  # Cyan/Turquoise
             color_white = (255, 255, 255)
+            color_gray = (180, 180, 180)
             
-            # Dessiner le texte
-            draw.text((80, 180), token_name, fill=color_white, font=font_medium)
-            draw.text((80, 230), f"+${profit_sol * 100:.2f}", fill=color_profit, font=font_large)  # Approximation en USD
+            # Titre en haut à droite
+            draw.text((650, 40), "MoonBot", fill=color_white, font=font_title)
+            draw.text((760, 45), "Pro", fill=color_profit, font=font_small)
             
-            draw.text((80, 310), "PNL", fill=color_white, font=font_small)
-            draw.text((300, 310), f"+{pnl_percentage:.2f}%", fill=color_profit, font=font_small)
+            # Token symbol/name en haut
+            draw.text((60, 130), token_symbol, fill=color_white, font=font_large)
             
-            draw.text((80, 350), "Invested", fill=color_white, font=font_small)
-            draw.text((300, 350), f"{invested} SOL", fill=color_white, font=font_small)
+            # PNL en gros (style +$8.823)
+            profit_usd = profit_sol * 100  # Approximation
+            draw.text((60, 190), f"+${profit_usd:.3f}", fill=color_profit, font=font_huge)
             
-            draw.text((80, 390), "Position", fill=color_white, font=font_small)
-            draw.text((300, 390), f"{position:.4f} SOL", fill=color_white, font=font_small)
+            # PNL %
+            draw.text((60, 290), "PNL", fill=color_gray, font=font_medium)
+            draw.text((280, 290), f"+{pnl_percentage:.2f}%", fill=color_profit, font=font_medium)
+            
+            # Invested
+            draw.text((60, 350), "Invested", fill=color_gray, font=font_medium)
+            draw.text((280, 350), f"{invested} SOL", fill=color_white, font=font_medium)
+            
+            # Position
+            draw.text((60, 410), "Position", fill=color_gray, font=font_medium)
+            draw.text((280, 410), f"{position:.4f} SOL", fill=color_white, font=font_medium)
+            
+            # Username en bas (style @fucksolb)
+            username = user.username if user.username else user.first_name
+            draw.text((60, 470), f"@{username}", fill=color_white, font=font_small)
             
             # Sauvegarder l'image
-            pnl_image_path = f"/home/claude/pnl_{user.id}.png"
+            pnl_image_path = f"/home/claude/pnl_{user.id}_{int(random.random()*10000)}.png"
             bg_image.convert('RGB').save(pnl_image_path)
             
             # Envoyer l'image
@@ -1840,11 +1958,12 @@ Insiders: {insider_count}"""
                 await update.message.reply_photo(
                     photo=photo,
                     caption=f"📊 **Your PNL Report**\n\n"
-                            f"Token: {token_name}\n"
-                            f"Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
-                            f"Invested: {invested} SOL\n"
-                            f"Position: {position:.4f} SOL\n"
-                            f"PNL: +{pnl_percentage:.2f}% ({profit_sol:+.4f} SOL)",
+                            f"🪙 Token: {token_name} ({token_symbol})\n"
+                            f"📋 Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
+                            f"💰 Invested: {invested} SOL\n"
+                            f"📈 Position: {position:.4f} SOL\n"
+                            f"📊 PNL: +{pnl_percentage:.2f}%\n"
+                            f"💵 Profit: +{profit_sol:.4f} SOL",
                     parse_mode='HTML'
                 )
             
@@ -1854,11 +1973,13 @@ Insiders: {insider_count}"""
             
         except Exception as e:
             logger.error(f"Erreur génération image PNL: {e}")
+            import traceback
+            traceback.print_exc()
             # Message de fallback sans image
             await update.message.reply_text(
                 f"📊 **Your PNL Report**\n\n"
-                f"Token: {token_name}\n"
-                f"Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
+                f"🪙 Token: {token_name} ({token_symbol})\n"
+                f"📋 Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
                 f"💰 Invested: {invested} SOL\n"
                 f"📈 Position: {position:.4f} SOL\n"
                 f"📊 PNL: +{pnl_percentage:.2f}%\n"
@@ -1872,7 +1993,7 @@ Insiders: {insider_count}"""
 👤 <b>Utilisateur:</b> {escape_html(user.first_name)}
 🔢 <b>User ID:</b> <code>{user.id}</code>
 
-🪙 <b>Token:</b> {token_name}
+🪙 <b>Token:</b> {token_symbol}
 📋 <b>CA:</b> <code>{escape_html(contract_address)}</code>
 
 💰 <b>Investi:</b> {invested} SOL
@@ -2209,6 +2330,7 @@ def main():
     application.add_handler(CommandHandler("scan", scan_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("recap", recap_command))
     
     # Commandes correspondant aux boutons du menu
     application.add_handler(CommandHandler("quickbuy", quickbuy_command))
