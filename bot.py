@@ -1846,7 +1846,7 @@ Insiders: {insider_count}"""
         # Générer des données PNL aléatoires
         import random
         invested = 0.3  # TOUJOURS 0.3 SOL investi
-        pnl_percentage = random.uniform(85, 172)  # Entre 85% et 172%
+        pnl_percentage = random.uniform(52, 173)  # Entre 52% et 173%
         position = invested * (1 + pnl_percentage / 100)
         profit_sol = position - invested
         
@@ -2395,3 +2395,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
