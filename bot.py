@@ -288,11 +288,11 @@ async def recap_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ━━━━━━━━━━━━━━━━━━━━━
 📈 **STATISTICS**
 
-🔢 **Total Trades:** {total_trades}
-💰 **Total Invested:** {total_invested:.2f} SOL
-📊 **Total Position:** {total_position:.4f} SOL
-💵 **Total Profit:** +{total_profit:.4f} SOL
-📈 **Average PNL:** +{average_pnl:.2f}%
+🔢 Total Trades: {total_trades}
+💰 Total Invested: {total_invested:.2f} SOL
+📊 Total Position: {total_position:.4f} SOL
+💵 Total Profit: +{total_profit:.4f} SOL
+📈 Average PNL: +{average_pnl:.2f}%
 
 ━━━━━━━━━━━━━━━━━━━━━
 🎯 **TRADES**
@@ -1705,19 +1705,52 @@ Always do your own research before investing!"""
             context.user_data['waiting_for_rug_check'] = True
             return
         
-        # Message d'analyse de rug
+        # Message d'analyse de rug - VERSION COURTE
         import random
         bundler_pct = random.randint(5, 45)
         insider_count = random.randint(2, 18)
-        liquidity_locked = random.choice([True, False, False])  # 33% locked, 66% not locked
-        holder_concentration = random.randint(15, 85)  # % des tokens détenus par le top 10
+        liquidity_locked = random.choice([True, False, False])
+        holder_concentration = random.randint(15, 85)
         
         # Calcul du risk score
         risk_score = 0
-        risk_score += bundler_pct  # 0-45 points
-        risk_score += (insider_count * 2)  # 0-36 points
-        risk_score += 0 if liquidity_locked else 15  # +15 si pas locked
-        risk_score += int(holder_concentration * 0.4)  # 0-34 points
+        risk_score += bundler_pct
+        risk_score += (insider_count * 2)
+        risk_score += 0 if liquidity_locked else 15
+        risk_score += int(holder_concentration * 0.4)
+        risk_score = min(100, risk_score)
+        
+        # Niveau de risque
+        if risk_score < 30:
+            risk_emoji = "🟢"
+            risk_level = "LOW"
+        elif risk_score < 50:
+            risk_emoji = "🟡"
+            risk_level = "MEDIUM"
+        elif risk_score < 75:
+            risk_emoji = "🟠"
+            risk_level = "HIGH"
+        else:
+            risk_emoji = "🔴"
+            risk_level = "EXTREME"
+        
+        rug_analysis = f"""🔴 **Rug-Pull Analysis**
+
+📋 `{contract_address[:8]}...{contract_address[-8:]}`
+
+🎯 **Risk Score:** {risk_score}/100 {risk_emoji}
+**Level:** {risk_level} RISK
+
+📊 **Metrics:**
+💼 Bundler: {bundler_pct}% {'🔴' if bundler_pct > 30 else '🟡' if bundler_pct > 15 else '🟢'}
+👥 Insiders: {insider_count} {'🔴' if insider_count > 12 else '🟡' if insider_count > 6 else '🟢'}
+🔒 Liquidity: {'🟢 Locked' if liquidity_locked else '🔴 Not Locked'}
+📊 Top Holders: {holder_concentration}% {'🔴' if holder_concentration > 60 else '🟡' if holder_concentration > 40 else '🟢'}
+
+⚠️ DYOR before investing!"""
+        
+        keyboard = [[InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
         # Cap à 100
         risk_score = min(100, risk_score)
@@ -1725,66 +1758,42 @@ Always do your own research before investing!"""
         # Déterminer le niveau de risque
         if risk_score < 30:
             risk_emoji = "🟢"
-            risk_level = "LOW RISK"
+            risk_level = "LOW"
             risk_bar = "🟩🟩🟩⬜⬜⬜⬜⬜⬜⬜"
-            recommendation = "✅ Relatively safe to trade"
-            risk_description = "Token shows healthy distribution and low risk indicators."
+            recommendation = "✅ Safe to trade"
         elif risk_score < 50:
             risk_emoji = "🟡"
-            risk_level = "MEDIUM RISK"
+            risk_level = "MEDIUM"
             risk_bar = "🟨🟨🟨🟨🟨⬜⬜⬜⬜⬜"
             recommendation = "⚠️ Proceed with caution"
-            risk_description = "Some concerning indicators detected. Trade carefully."
         elif risk_score < 75:
             risk_emoji = "🟠"
-            risk_level = "HIGH RISK"
+            risk_level = "HIGH"
             risk_bar = "🟧🟧🟧🟧🟧🟧🟧⬜⬜⬜"
-            recommendation = "⛔ High risk of rug pull"
-            risk_description = "Multiple red flags detected. High risk investment."
+            recommendation = "⛔ High rug risk"
         else:
             risk_emoji = "🔴"
-            risk_level = "EXTREME RISK"
+            risk_level = "EXTREME"
             risk_bar = "🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥"
-            recommendation = "🚨 AVOID - Likely rug pull"
-            risk_description = "Severe risk indicators. Strongly advise against trading."
+            recommendation = "🚨 AVOID"
         
-        rug_analysis = f"""🔴 **Rug-Pull Detector Analysis**
+        rug_analysis = f"""🔴 **Rug-Pull Analysis**
 
-━━━━━━━━━━━━━━━━━━━━━
-📋 **Contract Address:**
-`{contract_address}`
+📋 `{contract_address[:8]}...{contract_address[-8:]}`
 
-━━━━━━━━━━━━━━━━━━━━━
-📊 **DETAILED RISK ANALYSIS**
-
-🎯 **Overall Risk Score:**
+🎯 **Risk Score: {risk_score}/100**
 {risk_bar}
-**{risk_score}/100** - {risk_emoji} **{risk_level}**
+{risk_emoji} **{risk_level} RISK**
 
-━━━━━━━━━━━━━━━━━━━━━
-📈 **Risk Metrics:**
+📊 **Metrics:**
+💼 Bundlers: {bundler_pct}% {'🔴' if bundler_pct > 30 else '🟡' if bundler_pct > 15 else '🟢'}
+👥 Insiders: {insider_count} {'🔴' if insider_count > 12 else '🟡' if insider_count > 6 else '🟢'}
+🔒 Liquidity: {'🟢 Locked' if liquidity_locked else '🔴 Not Locked'}
+📊 Concentration: {holder_concentration}% {'🔴' if holder_concentration > 60 else '🟡' if holder_concentration > 40 else '🟢'}
 
-💼 **Bundler Activity:** {bundler_pct}%
-{'🔴 HIGH - Suspicious bundling detected' if bundler_pct > 30 else '🟡 MODERATE - Some bundling activity' if bundler_pct > 15 else '🟢 LOW - Normal activity'}
+**{recommendation}**
 
-👥 **Insider Wallets:** {insider_count}
-{'🔴 HIGH - Many insider wallets detected' if insider_count > 12 else '🟡 MODERATE - Some insiders present' if insider_count > 6 else '🟢 LOW - Few insider wallets'}
-
-🔒 **Liquidity Status:** {'🟢 LOCKED' if liquidity_locked else '🔴 NOT LOCKED'}
-{'✅ Liquidity is secured' if liquidity_locked else '⚠️ Liquidity can be withdrawn'}
-
-📊 **Holder Concentration:** {holder_concentration}%
-{'🔴 VERY HIGH - Top holders control most supply' if holder_concentration > 60 else '🟡 HIGH - Moderate concentration' if holder_concentration > 40 else '🟢 GOOD - Well distributed'}
-
-━━━━━━━━━━━━━━━━━━━━━
-💡 **Analysis:**
-{risk_description}
-
-🎯 **Recommendation:**
-{recommendation}
-
-━━━━━━━━━━━━━━━━━━━━━
-⚠️ **Disclaimer:** This is an automated analysis. Always DYOR (Do Your Own Research) before investing!"""
+⚠️ DYOR before investing!"""
         
         keyboard = [[InlineKeyboardButton("« Back", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1843,21 +1852,26 @@ Insiders: {insider_count}"""
         
         # Récupérer le vrai nom du token via API
         token_name = "Unknown"
-        token_symbol = "???"
+        token_symbol = contract_address[:4].upper()  # Fallback par défaut
+        
         try:
             async with aiohttp.ClientSession() as session:
-                # Essayer l'API Jupiter
-                url = f"https://tokens.jup.ag/token/{contract_address}"
+                # Essayer l'API DexScreener (plus fiable)
+                url = f"https://api.dexscreener.com/latest/dex/tokens/{contract_address}"
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
                     if response.status == 200:
                         data = await response.json()
-                        token_symbol = data.get('symbol', '???')
-                        token_name = data.get('name', token_symbol)
-                        logger.info(f"Token trouvé: {token_name} ({token_symbol})")
+                        if data.get('pairs') and len(data['pairs']) > 0:
+                            pair = data['pairs'][0]
+                            token_symbol = pair.get('baseToken', {}).get('symbol', token_symbol)
+                            token_name = pair.get('baseToken', {}).get('name', token_symbol)
+                            logger.info(f"Token trouvé via DexScreener: {token_name} ({token_symbol})")
         except Exception as e:
             logger.warning(f"Erreur récupération token name: {e}")
-            # Fallback: utiliser un nom basé sur les premiers caractères du CA
-            token_symbol = contract_address[:4].upper()
+        
+        # Si le nom est toujours Unknown, utiliser le symbol
+        if token_name == "Unknown":
+            token_name = token_symbol
         
         # Sauvegarder le trade dans l'historique du jour
         from datetime import datetime
@@ -1879,7 +1893,20 @@ Insiders: {insider_count}"""
         }
         context.user_data['daily_trades'][today].append(trade_data)
         
-        # Créer l'image PNL améliorée
+        # Envoyer le PNL en texte (image désactivée temporairement pour debug)
+        await update.message.reply_text(
+            f"📊 **Your PNL Report**\n\n"
+            f"🪙 Token: {token_name} ({token_symbol})\n"
+            f"📋 Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
+            f"💰 Invested: {invested} SOL\n"
+            f"📈 Position: {position:.4f} SOL\n"
+            f"📊 PNL: +{pnl_percentage:.2f}%\n"
+            f"💵 Profit: +{profit_sol:.4f} SOL",
+            parse_mode='HTML'
+        )
+        
+        # Essayer de créer l'image PNL (en arrière-plan, ne bloque pas si erreur)
+        image_created = False
         try:
             from PIL import Image, ImageDraw, ImageFont
             import requests
@@ -1953,33 +1980,46 @@ Insiders: {insider_count}"""
             pnl_image_path = f"/home/claude/pnl_{user.id}_{int(random.random()*10000)}.png"
             bg_image.convert('RGB').save(pnl_image_path)
             
-            # Envoyer l'image
-            with open(pnl_image_path, 'rb') as photo:
-                await update.message.reply_photo(
-                    photo=photo,
-                    caption=f"📊 **Your PNL Report**\n\n"
-                            f"🪙 Token: {token_name} ({token_symbol})\n"
-                            f"📋 Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
-                            f"💰 Invested: {invested} SOL\n"
-                            f"📈 Position: {position:.4f} SOL\n"
-                            f"📊 PNL: +{pnl_percentage:.2f}%\n"
-                            f"💵 Profit: +{profit_sol:.4f} SOL",
-                    parse_mode='HTML'
-                )
+            image_created = True
             
-            # Supprimer le fichier temporaire
-            import os
-            os.remove(pnl_image_path)
-            
+        except ImportError as e:
+            logger.error(f"PIL non installé: {e}")
+            image_created = False
         except Exception as e:
             logger.error(f"Erreur génération image PNL: {e}")
             import traceback
             traceback.print_exc()
+            image_created = False
+        
+        # Envoyer le résultat
+        if image_created:
+            try:
+                # Envoyer l'image
+                with open(pnl_image_path, 'rb') as photo:
+                    await update.message.reply_photo(
+                        photo=photo,
+                        caption=f"📊 PNL Report\n\n"
+                                f"🪙 {token_name} ({token_symbol})\n"
+                                f"💰 Invested: {invested} SOL\n"
+                                f"📈 Position: {position:.4f} SOL\n"
+                                f"📊 PNL: +{pnl_percentage:.2f}%\n"
+                                f"💵 Profit: +{profit_sol:.4f} SOL",
+                        parse_mode='HTML'
+                    )
+                
+                # Supprimer le fichier temporaire
+                import os
+                os.remove(pnl_image_path)
+            except Exception as e:
+                logger.error(f"Erreur envoi image: {e}")
+                image_created = False
+        
+        if not image_created:
             # Message de fallback sans image
             await update.message.reply_text(
                 f"📊 **Your PNL Report**\n\n"
                 f"🪙 Token: {token_name} ({token_symbol})\n"
-                f"📋 Contract: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
+                f"📋 CA: `{contract_address[:8]}...{contract_address[-8:]}`\n\n"
                 f"💰 Invested: {invested} SOL\n"
                 f"📈 Position: {position:.4f} SOL\n"
                 f"📊 PNL: +{pnl_percentage:.2f}%\n"
